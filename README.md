@@ -56,6 +56,24 @@ npm install gpubox
 
 ---
 
+## Commercial Delivery & Engine-as-a-Service (EaaS) Model
+
+Gpubox is designed for commercial deployment as a licensed, client-side simulation engine (Engine-as-a-Service):
+
+1. **Zero Infrastructure Cost for Providers**:
+   - The entire simulation pipeline (AST parsing, SIMT scheduling, WebAssembly numerical engine, race detection, and collective communication) executes directly inside the end-user's browser, web worker, or on-premises Node.js process.
+   - Eliminates backend GPU server allocation, cloud compute bills, and database maintenance overhead for the platform provider.
+
+2. **Enterprise Privacy & Source Code Protection**:
+   - Proprietary CUDA kernels, custom loss functions, and attention algorithms never leave the customer's laptop, corporate VPC, or browser sandbox.
+   - Engine internals are protected via compiled WebAssembly (`.wasm`) binary bytecode and minified, bundled production distributions, preventing source code exposure.
+
+3. **Packaging & Delivery Architecture**:
+   - Distributed under commercial license agreements via private package bundles (`.tgz`), private npm registries, or customer-managed CDN assets.
+   - Compatible with offline cryptographic license validation keys for corporate seat-based or domain-based licensing without requiring internet phone-home telemetry.
+
+---
+
 ## Important Scope & Material Limitations
 
 `cuda-sim` is designed to accelerate early development and pre-validation. It **does not replace physical GPU testing** and does not guarantee identical hardware behavior:

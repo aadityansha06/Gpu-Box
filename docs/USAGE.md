@@ -262,6 +262,17 @@ console.log('Worker Result Status:', result.status);
 
 ---
 
-## 9. Legal & Trademark Disclaimer
+## 9. Commercial Packaging & Engine-as-a-Service (EaaS) Delivery
+
+Gpubox is commercially licensed under a client-side delivery model:
+
+- **Zero Provider Hosting Costs**: All AST transpilation, SIMT execution, and collective communication runs on the client machine or user browser. The provider incurs $0 in cloud server infrastructure bills.
+- **Client Privacy & Intellectual Property**: Customer CUDA code remains strictly local and is never transmitted over external networks.
+- **Protected Binaries**: The numerical simulation core is compiled to binary WebAssembly (`.wasm`), and client runtimes are minified to safeguard intellectual property.
+- **Private Distribution**: Deliverable via private tarball packages (`gpubox-1.0.0.tgz`), private scoped npm registries, or direct customer CDN assets.
+
+---
+
+## 10. Legal & Trademark Disclaimer
 
 > **Disclaimer**: Gpubox is not affiliated with, sponsored by, or endorsed by NVIDIA Corporation. CUDA, NVIDIA, NVLink, and NVSwitch are registered trademarks or trademarks of NVIDIA Corporation. All trademarks are used strictly for reference purposes to identify software compatibility and architectural profiles.
