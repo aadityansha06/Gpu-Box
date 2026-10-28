@@ -6,6 +6,7 @@
   import { LINKS, PRICING } from '../lib/config.js';
   import MemoryBankGrid from '../lib/MemoryBankGrid.svelte';
   import CodeEditor from '../lib/CodeEditor.svelte';
+  import EnterpriseDiagrams from '../lib/EnterpriseDiagrams.svelte';
 
   let canvasRef;
   let stop3D;
@@ -140,16 +141,19 @@
     </div>
 
     <div class="container hero__content">
-      <div class="badge">GPUBOX &bull; Browser CUDA Pre-Validation</div>
-      <h1>Validate CUDA kernels before you pay for cloud GPUs.</h1>
+      <div class="badge">Enterprise CUDA Pre-Validation Standard</div>
+      <h1>
+        Eliminate Cloud GPU Waste.
+        <span class="gold-text">Pre-Validate CUDA in the Browser.</span>
+      </h1>
       <p class="lead">
-        A client-side CUDA and multi-GPU simulation engine. Transpile, simulate, and debug supported CUDA C++ kernels, shared memory hazards, and 1 to 16 GPU cluster collectives directly in your browser with zero cloud server spend.
+        The browser-native execution and verification engine for parallel software engineering teams. Transpile supported CUDA C++, identify 32-bank memory serialization hazards, and validate 1 to 16 GPU cluster collectives client-side before burning compute budget on physical silicon.
       </p>
 
       <div class="hero__actions">
         <a href="/playground" class="btn btn--primary">Launch Interactive Playground</a>
-        <a href="/docs" class="btn btn--secondary">Read Documentation</a>
-        <a href="/benchmarks" class="btn btn--secondary">Hardware Verification</a>
+        <a href="/docs" class="btn btn--secondary">Read Technical Manual</a>
+        <a href="/benchmarks" class="btn btn--secondary">Hardware Benchmark Data</a>
       </div>
 
       <div class="hero__install-box">
@@ -172,7 +176,44 @@
         <span class="hero__chip-sep">&bull;</span>
         <span>Bit-Exact on NVIDIA RTX 4050 Laptop GPU</span>
         <span class="hero__chip-sep">&bull;</span>
-        <span>Zero Server Cost</span>
+        <span>100% Zero-Data-Egress Security</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Enterprise Architectural Showcase Section with Handcrafted SVGs -->
+  <section class="section">
+    <div class="container">
+      <div class="section__head">
+        <span class="section__kicker">Virtual Silicon Architecture</span>
+        <h2>Deterministic SIMT Pipeline & Cluster Topography</h2>
+        <p>A zero-server WebAssembly and SIMT execution environment engineered to reproduce real GPU memory hierarchies and interconnect topologies.</p>
+      </div>
+
+      <!-- Main Micro-Architecture Pipeline SVG -->
+      <div class="architecture-diagram-card">
+        <EnterpriseDiagrams diagram="architecture" />
+      </div>
+
+      <!-- Two-Column Architecture Cards with SVGs -->
+      <div class="grid grid--2" style="margin-top: 2rem;">
+        <div class="card card--diagram">
+          <div class="card__head-tag">Cluster Fabric</div>
+          <h3>Multi-GPU Ring Collective Topography</h3>
+          <p>Models NVLink 600 GB/s bidirectional ring throughput and peer-to-peer memory transactions across 1 to 16 virtual GPU nodes with NCCL AllReduce, Broadcast, and AllGather.</p>
+          <div class="diagram-mini-wrap">
+            <EnterpriseDiagrams diagram="cluster" />
+          </div>
+        </div>
+
+        <div class="card card--diagram">
+          <div class="card__head-tag">Enterprise Governance</div>
+          <h3>100% Zero-Data-Egress Sandbox</h3>
+          <p>Proprietary kernel code, intellectual property, and custom quantization algorithms run exclusively within the local developer environment. Zero external server calls or cloud telemetry.</p>
+          <div class="diagram-mini-wrap">
+            <EnterpriseDiagrams diagram="security" />
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -749,13 +790,43 @@
   .hero__chip-dot {
     width: 8px;
     height: 8px;
-    background: var(--success);
+    background: var(--gold-primary);
     border-radius: 50%;
-    box-shadow: 0 0 8px var(--success);
+    box-shadow: 0 0 10px var(--gold-primary);
   }
 
   .hero__chip-sep {
-    color: var(--text-muted);
+    color: var(--gold-muted);
+  }
+
+  /* Architectural Diagrams Cards */
+  .architecture-diagram-card {
+    background: #08080d;
+    border: 1px solid var(--gold-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  }
+
+  .card--diagram {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .diagram-mini-wrap {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .card__head-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gold-light);
+    margin-bottom: 0.5rem;
   }
 
   /* Problem Cards */
@@ -1022,61 +1093,6 @@
     font-family: var(--font-mono);
   }
 
-  .pane-header__left {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .status-pill {
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    text-transform: uppercase;
-    font-family: var(--font-mono);
-  }
-
-  .status-pill--pass {
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-  }
-
-  .status-pill--fail, .status-pill--error {
-    background: var(--danger-bg);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-  }
-
-  .status-pill--running {
-    background: rgba(99, 102, 241, 0.15);
-    color: var(--primary-light);
-  }
-
-  .status-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-  }
-
-  .code-editor {
-    flex: 1;
-    width: 100%;
-    min-height: 400px;
-    background: transparent;
-    color: #e5e7eb;
-    font-family: var(--font-mono);
-    font-size: 0.88rem;
-    line-height: 1.6;
-    padding: 1rem;
-    border: none;
-    outline: none;
-    resize: none;
-    white-space: pre;
-    tab-size: 4;
-  }
-
   /* Terminal Area */
   .terminal-area {
     flex: 1;
@@ -1233,8 +1249,9 @@
   }
 
   .pricing-card--featured {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+    border-color: var(--gold-border);
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.08) 0%, #0d0d14 100%);
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
   }
 
   .pricing-card__head {

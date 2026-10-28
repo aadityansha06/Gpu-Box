@@ -170,8 +170,8 @@
 
   .docs-search-input {
     width: 100%;
-    background: #090d16;
-    border: 1px solid var(--border-card);
+    background: #08080d;
+    border: 1px solid var(--gold-border-subtle);
     border-radius: var(--radius-md);
     padding: 0.55rem 0.85rem;
     font-size: 0.82rem;
@@ -181,7 +181,7 @@
   }
 
   .docs-search-input:focus {
-    border-color: var(--primary);
+    border-color: var(--gold-primary);
   }
 
   .docs-nav {
@@ -226,10 +226,10 @@
   }
 
   .nav-link--active {
-    color: #10b981;
+    color: var(--gold-light);
     font-weight: 600;
-    background: rgba(16, 185, 129, 0.08);
-    border-left-color: #10b981;
+    background: rgba(212, 175, 55, 0.1);
+    border-left-color: var(--gold-primary);
   }
 
   /* Main Content */
@@ -282,8 +282,8 @@
   .page-nav {
     display: flex;
     flex-direction: column;
-    background: #090d16;
-    border: 1px solid var(--border-card);
+    background: #08080d;
+    border: 1px solid var(--gold-border-subtle);
     border-radius: var(--radius-md);
     padding: 0.85rem 1.25rem;
     cursor: pointer;
@@ -293,8 +293,8 @@
   }
 
   .page-nav:hover {
-    border-color: #10b981;
-    background: rgba(16, 185, 129, 0.04);
+    border-color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.06);
   }
 
   .page-nav--next {

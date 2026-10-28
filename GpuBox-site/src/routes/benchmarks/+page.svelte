@@ -37,7 +37,7 @@
   <!-- Header -->
   <header class="page-header">
     <div class="badge badge--success">175 / 175 Tests Passing &bull; Bit-Exact Hardware Verified</div>
-    <h1 class="page-title">Validation Suite & Hardware Benchmarks</h1>
+    <h1 class="page-title">Validation Suite & <span class="gold-text">Hardware Benchmarks</span></h1>
     <p class="page-subtitle">
       Automated regression tests and physical NVIDIA GeForce RTX 4050 GPU kernel comparisons verifying mathematical accuracy, 32-bank shared memory modeling, and multi-GPU cluster interconnects.
     </p>
@@ -47,22 +47,22 @@
   <div class="scorecard-grid">
     <div class="score-card">
       <div class="score-card__label">Automated Test Suites</div>
-      <div class="score-card__val text-success">175 / 175</div>
+      <div class="score-card__val text-gold">175 / 175</div>
       <div class="score-card__sub">100% deterministic pass rate</div>
     </div>
     <div class="score-card">
       <div class="score-card__label">Physical GPU Verification</div>
-      <div class="score-card__val text-cyan">6 / 6 Kernels</div>
+      <div class="score-card__val text-gold">6 / 6 Kernels</div>
       <div class="score-card__sub">Bit-exact against NVIDIA RTX 4050</div>
     </div>
     <div class="score-card">
       <div class="score-card__label">Hardware Architectures</div>
-      <div class="score-card__val">8 Profiles</div>
+      <div class="score-card__val text-gold">8 Profiles</div>
       <div class="score-card__sub">Hopper, Ampere, Ada, Volta, Turing</div>
     </div>
     <div class="score-card">
       <div class="score-card__label">Virtual Cluster Scaling</div>
-      <div class="score-card__val">1 &rarr; 16 GPUs</div>
+      <div class="score-card__val text-gold">1 &rarr; 16 GPUs</div>
       <div class="score-card__sub">NCCL Ring AllReduce & P2P NVLink</div>
     </div>
   </div>
@@ -218,10 +218,15 @@
   }
 
   .score-card {
-    background: #090d16;
-    border: 1px solid var(--border-subtle);
+    background: #08080d;
+    border: 1px solid var(--gold-border-subtle);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .score-card:hover {
+    border-color: var(--gold-border);
   }
 
   .score-card__label {
@@ -229,7 +234,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-muted);
+    color: var(--gold-light);
     margin-bottom: 0.5rem;
   }
 
@@ -246,8 +251,10 @@
     margin-top: 0.35rem;
   }
 
-  .text-success { color: #10b981; }
-  .text-cyan { color: #06b6d4; }
+  .text-gold {
+    color: var(--gold-light);
+    text-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+  }
 
   /* Section */
   .section {

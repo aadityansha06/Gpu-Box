@@ -92,9 +92,9 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(6, 8, 13, 0.88);
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(4, 4, 7, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
   }
 
   .site-header__inner {
@@ -107,30 +107,32 @@
   .site-logo {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     font-weight: 800;
     letter-spacing: -0.02em;
   }
 
   .site-logo__mark {
-    width: 13px;
-    height: 13px;
-    background: #10b981;
+    width: 14px;
+    height: 14px;
+    background: var(--gold-gradient);
     border-radius: 3px;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 14px rgba(212, 175, 55, 0.55);
   }
 
   .site-logo__text {
     font-size: 1.15rem;
     color: #ffffff;
     font-weight: 800;
+    letter-spacing: 0.02em;
   }
 
   .site-logo__badge {
     font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.06);
+    font-weight: 700;
+    color: var(--gold-light);
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.25);
     padding: 0.15rem 0.45rem;
     border-radius: 4px;
     font-family: var(--font-mono);
@@ -152,11 +154,11 @@
     font-size: 0.88rem;
     font-weight: 500;
     color: var(--text-secondary);
-    transition: color 0.15s ease;
+    transition: all 0.15s ease;
   }
 
   .site-nav__link:hover {
-    color: #ffffff;
+    color: var(--gold-light);
   }
 
   .site-header__actions {
@@ -173,7 +175,7 @@
   }
 
   .site-nav__icon-link:hover {
-    color: #ffffff;
+    color: var(--gold-primary);
   }
 
   .site-main {
@@ -182,8 +184,8 @@
 
   /* Footer */
   .site-footer {
-    background: #040508;
-    border-top: 1px solid var(--border-subtle);
+    background: #020204;
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
     padding: 4.5rem 0 2rem;
   }
 
@@ -192,7 +194,7 @@
     grid-template-columns: 2fr 1.5fr;
     gap: 3rem;
     padding-bottom: 3rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   @media (max-width: 768px) {

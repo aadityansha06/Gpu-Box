@@ -482,13 +482,13 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 4.25rem);
-    background: #06080d;
+    background: var(--bg-primary);
     overflow: hidden;
   }
 
   .pg-header {
-    background: #090d16;
-    border-bottom: 1px solid var(--border-subtle);
+    background: #08080c;
+    border-bottom: 1px solid var(--border-gold);
     padding: 0.65rem 1.25rem;
     display: flex;
     align-items: center;
@@ -508,8 +508,8 @@
   /* Mode Toggle */
   .mode-toggle {
     display: flex;
-    background: #05070c;
-    border: 1px solid var(--border-card);
+    background: #050508;
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     padding: 2px;
   }
@@ -531,8 +531,8 @@
   }
 
   .mode-btn--active {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
+    background: var(--gold-glow);
+    color: var(--gold-primary);
   }
 
   .control-unit {
@@ -548,12 +548,13 @@
     text-transform: uppercase;
     font-size: 0.7rem;
     letter-spacing: 0.04em;
+    color: var(--gold-muted);
   }
 
   .pg-select {
-    background: #06090f;
+    background: #0a0a0f;
     color: var(--text-primary);
-    border: 1px solid var(--border-card);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     padding: 0.35rem 0.65rem;
     font-size: 0.8rem;
@@ -563,7 +564,7 @@
   }
 
   .pg-select:focus {
-    border-color: var(--primary);
+    border-color: var(--gold-primary);
   }
 
   .pg-header__actions {
@@ -594,15 +595,15 @@
 
   .pg-pane--editor {
     border-right: 1px solid var(--border-subtle);
-    background: #05070c;
+    background: #040407;
   }
 
   .pg-pane--inspector {
-    background: #090d15;
+    background: #06060a;
   }
 
   .pg-pane__header {
-    background: #080b12;
+    background: #08080c;
     border-bottom: 1px solid var(--border-subtle);
     padding: 0.5rem 1rem;
     display: flex;
@@ -622,7 +623,8 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #10b981;
+    background: var(--gold-primary);
+    box-shadow: 0 0 6px var(--gold-glow-strong);
   }
 
   .file-name {
@@ -659,8 +661,9 @@
   }
 
   .icon-btn:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.1);
+    color: var(--gold-light);
+    border-color: var(--gold-primary);
+    background: var(--gold-glow);
   }
 
   .editor-wrap {
@@ -673,7 +676,7 @@
   /* Inspector Tabs */
   .pg-tabs {
     display: flex;
-    background: #060910;
+    background: #06060a;
     border-bottom: 1px solid var(--border-subtle);
     overflow-x: auto;
   }
@@ -699,9 +702,9 @@
   }
 
   .pg-tab--active {
-    color: #ffffff;
-    border-bottom-color: #10b981;
-    background: rgba(16, 185, 129, 0.05);
+    color: var(--gold-light);
+    border-bottom-color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.08);
   }
 
   .tab-indicator {
@@ -752,7 +755,7 @@
   }
 
   .status-chip--idle { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
-  .status-chip--running { background: rgba(6, 182, 212, 0.15); color: var(--primary-light); }
+  .status-chip--running { background: rgba(212, 175, 55, 0.15); color: var(--gold-light); }
   .status-chip--pass { background: var(--success-bg); color: var(--success); }
   .status-chip--fail, .status-chip--error { background: var(--danger-bg); color: var(--danger); }
 
@@ -781,14 +784,14 @@
 
   .terminal-body {
     flex: 1;
-    background: #05070c;
+    background: #030306;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     padding: 0.85rem;
     font-family: var(--font-mono);
     font-size: 0.82rem;
     line-height: 1.6;
-    color: #cbd5e1;
+    color: #e2e8f0;
     white-space: pre-wrap;
     word-break: break-all;
     overflow-y: auto;
@@ -804,7 +807,7 @@
   }
 
   .kpi-card {
-    background: #06090f;
+    background: #08080d;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 0.85rem 1rem;
@@ -839,12 +842,12 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
+    color: var(--gold-light);
     margin-bottom: 0.6rem;
   }
 
   .single-node-notice {
-    background: #06090f;
+    background: #08080d;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 1rem;
@@ -876,7 +879,7 @@
   }
 
   .node-card {
-    background: #06090f;
+    background: #08080d;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 0.75rem;
