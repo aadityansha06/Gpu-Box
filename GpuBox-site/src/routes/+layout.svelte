@@ -1,12 +1,13 @@
 <script>
   import '../app.css';
+  import GpuBoxLogo from '../lib/GpuBoxLogo.svelte';
 </script>
 
 <div class="site-layout">
   <header class="site-header">
     <div class="container site-header__inner">
       <a href="/" class="site-logo">
-        <span class="site-logo__mark"></span>
+        <GpuBoxLogo size={30} />
         <span class="site-logo__text">GPUBOX</span>
         <span class="site-logo__badge">v1.0.0</span>
       </a>
@@ -38,7 +39,7 @@
     <div class="container site-footer__inner">
       <div class="site-footer__brand">
         <div class="site-logo">
-          <span class="site-logo__mark"></span>
+          <GpuBoxLogo size={28} />
           <span class="site-logo__text">GPUBOX</span>
         </div>
         <p class="site-footer__desc">
@@ -92,9 +93,9 @@
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(4, 4, 7, 0.92);
+    background: rgba(0, 0, 0, 0.94);
     backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.18);
   }
 
   .site-header__inner {
@@ -110,14 +111,6 @@
     gap: 0.65rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-  }
-
-  .site-logo__mark {
-    width: 14px;
-    height: 14px;
-    background: var(--gold-gradient);
-    border-radius: 3px;
-    box-shadow: 0 0 14px rgba(212, 175, 55, 0.55);
   }
 
   .site-logo__text {
@@ -184,8 +177,8 @@
 
   /* Footer */
   .site-footer {
-    background: #020204;
-    border-top: 1px solid rgba(212, 175, 55, 0.15);
+    background: #000000;
+    border-top: 1px solid rgba(212, 175, 55, 0.18);
     padding: 4.5rem 0 2rem;
   }
 

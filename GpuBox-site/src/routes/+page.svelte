@@ -151,9 +151,8 @@
       </p>
 
       <div class="hero__actions">
-        <a href="/playground" class="btn btn--primary">Launch Interactive Playground</a>
-        <a href="/docs" class="btn btn--secondary">Read Technical Manual</a>
-        <a href="/benchmarks" class="btn btn--secondary">Hardware Benchmark Data</a>
+        <a href="/playground" class="btn btn--primary">Launch Playground &rarr;</a>
+        <a href="/docs" class="btn btn--secondary">Technical Documentation</a>
       </div>
 
       <div class="hero__install-box">
@@ -195,7 +194,7 @@
         <EnterpriseDiagrams diagram="architecture" />
       </div>
 
-      <!-- Two-Column Architecture Cards with SVGs -->
+      <!-- Two-Column Architecture Showcase with SVGs -->
       <div class="grid grid--2" style="margin-top: 2rem;">
         <div class="card card--diagram">
           <div class="card__head-tag">Cluster Fabric</div>
@@ -213,40 +212,6 @@
           <div class="diagram-mini-wrap">
             <EnterpriseDiagrams diagram="security" />
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Problem & Solution Section -->
-  <section class="section section--alt" id="problem">
-    <div class="container">
-      <div class="section__head">
-        <span class="section__kicker">The Problem</span>
-        <h2>Validating CUDA on hardware is slow and expensive</h2>
-        <p>Iterating on real GPU clusters creates engineering friction and avoidable cloud infrastructure spend.</p>
-      </div>
-
-      <div class="grid grid--4">
-        <div class="card">
-          <div class="card__tag">GPU Budget Waste</div>
-          <h3>Wasted Cloud Compute</h3>
-          <p>Engineers provision on-demand cloud GPU instances just to check whether an indexing formula or collective buffer size is correct. Basic logic bugs burn thousands of dollars.</p>
-        </div>
-        <div class="card">
-          <div class="card__tag">Slow Cycles</div>
-          <h3>Slow Feedback Loops</h3>
-          <p>Cluster launch, docker provisioning, and remote SSH turn a 30-second fix into a 15-minute wait. Gpubox compiles and simulates client-side in under 20 milliseconds.</p>
-        </div>
-        <div class="card">
-          <div class="card__tag">Local Barriers</div>
-          <h3>Hardware Access Gaps</h3>
-          <p>Engineers on MacBook, Linux, or laptops without NVIDIA GPUs cannot iterate locally. Gpubox gives every developer an instant client-side CUDA sandbox.</p>
-        </div>
-        <div class="card">
-          <div class="card__tag">Education</div>
-          <h3>EdTech & Classroom Cost</h3>
-          <p>Teaching CUDA requires giving every student access to dedicated GPU cloud instances. Gpubox embeds directly in browser assignments at zero hosting cost.</p>
         </div>
       </div>
     </div>
@@ -694,7 +659,12 @@
   }
 
   .hero__content h1 {
-    margin: 1.25rem 0 1.25rem;
+    font-family: var(--font-hero);
+    font-size: clamp(2.4rem, 5.2vw, 4.2rem);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    margin: 1.5rem 0 1.25rem;
   }
 
   .hero__actions {
@@ -707,20 +677,20 @@
 
   /* Install Command Box */
   .hero__install-box {
-    background: #090d16;
-    border: 1px solid var(--border-card);
+    background: #000000;
+    border: 1px solid var(--border-gold);
     border-radius: var(--radius-md);
     margin-bottom: 2rem;
     overflow: hidden;
     max-width: 540px;
     width: 100%;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
   }
 
   .install-tabs {
     display: flex;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
   }
 
   .install-tab {
@@ -736,9 +706,9 @@
   }
 
   .install-tab--active {
-    color: #10b981;
-    border-bottom-color: #10b981;
-    background: rgba(16, 185, 129, 0.08);
+    color: var(--gold-light);
+    border-bottom-color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.08);
   }
 
   .install-code-row {
@@ -747,20 +717,21 @@
     justify-content: space-between;
     padding: 0.65rem 1rem;
     gap: 1rem;
+    background: #000000;
   }
 
   .install-code {
     font-family: var(--font-mono);
     font-size: 0.82rem;
-    color: #38bdf8;
+    color: var(--gold-light);
     overflow-x: auto;
     white-space: nowrap;
   }
 
   .copy-install-btn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    color: var(--gold-light);
     padding: 0.25rem 0.6rem;
     border-radius: 4px;
     font-size: 0.72rem;
@@ -772,15 +743,15 @@
 
   .copy-install-btn:hover {
     color: #ffffff;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(212, 175, 55, 0.2);
   }
 
   .hero__chip {
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.2);
     padding: 0.5rem 1.15rem;
     border-radius: 9999px;
     font-size: 0.85rem;
@@ -801,7 +772,7 @@
 
   /* Architectural Diagrams Cards */
   .architecture-diagram-card {
-    background: #08080d;
+    background: #000000;
     border: 1px solid var(--gold-border);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
@@ -812,12 +783,14 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.18);
   }
 
   .diagram-mini-wrap {
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(212, 175, 55, 0.12);
   }
 
   .card__head-tag {
@@ -829,31 +802,21 @@
     margin-bottom: 0.5rem;
   }
 
-  /* Problem Cards */
-  .card__tag {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--primary-light);
-    margin-bottom: 0.5rem;
-  }
-
   /* Playground Section */
   .playground-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid var(--border-gold);
     border-radius: var(--radius-xl);
     overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
   }
 
   .presets-bar {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
     padding: 0.75rem 1.25rem;
   }
 
@@ -862,7 +825,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-muted);
+    color: var(--gold-muted);
     flex-shrink: 0;
   }
 
@@ -878,7 +841,7 @@
     align-items: center;
     gap: 0.4rem;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(212, 175, 55, 0.15);
     color: var(--text-secondary);
     padding: 0.35rem 0.75rem;
     border-radius: var(--radius-sm);
@@ -890,22 +853,24 @@
   }
 
   .preset-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #ffffff;
+    background: rgba(212, 175, 55, 0.1);
+    color: var(--gold-light);
+    border-color: var(--gold-primary);
   }
 
   .preset-btn--active {
-    background: var(--primary);
-    color: #ffffff;
-    border-color: var(--primary-hover);
+    background: var(--gold-surface);
+    color: var(--gold-light);
+    border-color: var(--gold-primary);
   }
 
   .preset-btn__tag {
     font-size: 0.65rem;
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0.5);
     padding: 0.1rem 0.35rem;
     border-radius: 3px;
     font-weight: 600;
+    color: var(--gold-light);
   }
 
   /* Controls Bar */
@@ -914,8 +879,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.85rem 1.25rem;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
     flex-wrap: wrap;
     gap: 1rem;
   }
@@ -935,14 +900,17 @@
 
   .control-group label {
     font-size: 0.82rem;
-    color: var(--text-secondary);
-    font-weight: 500;
+    color: var(--gold-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
   }
 
   .select-input {
-    background: var(--bg-input);
+    background: #000000;
     color: #ffffff;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(212, 175, 55, 0.25);
     padding: 0.4rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
@@ -951,7 +919,7 @@
   }
 
   .select-input:focus {
-    border-color: var(--primary);
+    border-color: var(--gold-primary);
   }
 
   .select-input--sm {
@@ -981,6 +949,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     min-height: 460px;
+    background: #000000;
   }
 
   @media (max-width: 860px) {
@@ -990,16 +959,16 @@
   }
 
   .editor-pane {
-    border-right: 1px solid var(--border-subtle);
+    border-right: 1px solid rgba(212, 175, 55, 0.18);
     display: flex;
     flex-direction: column;
-    background: #090c13;
+    background: #000000;
   }
 
   .output-pane {
     display: flex;
     flex-direction: column;
-    background: #07090f;
+    background: #000000;
   }
 
   .pane-header {
@@ -1008,8 +977,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 0.75rem;
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
   }
 
   .pane-header__tabs {
@@ -1040,9 +1009,9 @@
   }
 
   .pane-tab--active {
-    color: #ffffff;
-    border-bottom-color: #10b981;
-    background: rgba(16, 185, 129, 0.05);
+    color: var(--gold-light);
+    border-bottom-color: var(--gold-primary);
+    background: rgba(212, 175, 55, 0.08);
   }
 
   .tab-dot {
@@ -1065,7 +1034,7 @@
   .fullscreen-link {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--primary-light);
+    color: var(--gold-light);
     transition: color 0.15s ease;
   }
 
@@ -1077,6 +1046,7 @@
     padding: 1rem;
     overflow-y: auto;
     max-height: 440px;
+    background: #000000;
   }
 
   .pane-header__title {
@@ -1084,7 +1054,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
+    color: var(--gold-light);
   }
 
   .pane-header__meta {
@@ -1102,6 +1072,7 @@
     line-height: 1.5;
     overflow-y: auto;
     max-height: 400px;
+    background: #000000;
   }
 
   .terminal-placeholder {
@@ -1111,7 +1082,7 @@
   }
 
   .terminal-stdout {
-    color: #38bdf8;
+    color: #fce59f;
     white-space: pre-wrap;
   }
 
@@ -1140,8 +1111,8 @@
     flex-wrap: wrap;
     gap: 1rem;
     padding: 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-top: 1px solid var(--border-subtle);
+    background: #000000;
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
     font-family: var(--font-mono);
     font-size: 0.78rem;
   }
@@ -1156,7 +1127,7 @@
   }
 
   .telemetry-val {
-    color: var(--primary-light);
+    color: var(--gold-light);
     font-weight: 600;
   }
 

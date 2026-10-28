@@ -89,7 +89,7 @@
     display: flex;
     width: 100%;
     height: 100%;
-    background: #06080e;
+    background: #000000;
     overflow: hidden;
     font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
     font-size: 0.86rem;
@@ -98,8 +98,8 @@
 
   .editor-gutter {
     width: 48px;
-    background: #080b12;
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    background: #000000;
+    border-right: 1px solid rgba(212, 175, 55, 0.15);
     padding: 1rem 0;
     display: flex;
     flex-direction: column;
@@ -111,7 +111,7 @@
 
   .gutter-num {
     padding-right: 0.75rem;
-    color: #475569;
+    color: #444444;
     font-size: 0.75rem;
     height: 1.6em;
     line-height: 1.6;
@@ -122,6 +122,7 @@
     flex: 1;
     height: 100%;
     overflow: hidden;
+    background: #000000;
   }
 
   .editor-highlight,
@@ -161,13 +162,13 @@
   .editor-textarea {
     background: transparent;
     color: transparent;
-    caret-color: #38bdf8;
+    caret-color: #d4af37;
     resize: none;
     z-index: 2;
   }
 
   .editor-textarea::selection {
-    background: rgba(56, 189, 248, 0.25);
+    background: rgba(212, 175, 55, 0.35);
   }
 
   /* Prism Dark Theme Token Styles */

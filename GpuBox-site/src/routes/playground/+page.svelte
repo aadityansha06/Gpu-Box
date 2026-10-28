@@ -482,12 +482,12 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 4.25rem);
-    background: var(--bg-primary);
+    background: #000000;
     overflow: hidden;
   }
 
   .pg-header {
-    background: #08080c;
+    background: #000000;
     border-bottom: 1px solid var(--border-gold);
     padding: 0.65rem 1.25rem;
     display: flex;
@@ -508,8 +508,8 @@
   /* Mode Toggle */
   .mode-toggle {
     display: flex;
-    background: #050508;
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.25);
     border-radius: var(--radius-sm);
     padding: 2px;
   }
@@ -552,9 +552,9 @@
   }
 
   .pg-select {
-    background: #0a0a0f;
+    background: #000000;
     color: var(--text-primary);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(212, 175, 55, 0.25);
     border-radius: var(--radius-sm);
     padding: 0.35rem 0.65rem;
     font-size: 0.8rem;
@@ -578,6 +578,7 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    background: #000000;
   }
 
   @media (max-width: 960px) {
@@ -591,20 +592,21 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #000000;
   }
 
   .pg-pane--editor {
-    border-right: 1px solid var(--border-subtle);
-    background: #040407;
+    border-right: 1px solid rgba(212, 175, 55, 0.18);
+    background: #000000;
   }
 
   .pg-pane--inspector {
-    background: #06060a;
+    background: #000000;
   }
 
   .pg-pane__header {
-    background: #08080c;
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
     padding: 0.5rem 1rem;
     display: flex;
     align-items: center;
@@ -671,13 +673,14 @@
     display: flex;
     position: relative;
     overflow: hidden;
+    background: #000000;
   }
 
   /* Inspector Tabs */
   .pg-tabs {
     display: flex;
-    background: #06060a;
-    border-bottom: 1px solid var(--border-subtle);
+    background: #000000;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
     overflow-x: auto;
   }
 
@@ -729,6 +732,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 1rem 1.25rem;
+    background: #000000;
   }
 
   /* Tab Views */
@@ -784,8 +788,8 @@
 
   .terminal-body {
     flex: 1;
-    background: #030306;
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.18);
     border-radius: var(--radius-sm);
     padding: 0.85rem;
     font-family: var(--font-mono);
@@ -807,8 +811,8 @@
   }
 
   .kpi-card {
-    background: #08080d;
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.18);
     border-radius: var(--radius-md);
     padding: 0.85rem 1rem;
   }
@@ -847,8 +851,8 @@
   }
 
   .single-node-notice {
-    background: #08080d;
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.18);
     border-radius: var(--radius-md);
     padding: 1rem;
     font-size: 0.82rem;
@@ -879,8 +883,8 @@
   }
 
   .node-card {
-    background: #08080d;
-    border: 1px solid var(--border-subtle);
+    background: #000000;
+    border: 1px solid rgba(212, 175, 55, 0.18);
     border-radius: var(--radius-md);
     padding: 0.75rem;
   }
@@ -919,8 +923,9 @@
 
   .transpiled-editor-wrap {
     height: 440px;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(212, 175, 55, 0.18);
     border-radius: var(--radius-sm);
     overflow: hidden;
+    background: #000000;
   }
 </style>
