@@ -21,14 +21,14 @@ npm install gpubox
 
 ## Documentation
 
-- 📘 **[User Guide & Quick Start](docs/USAGE.md)** — Step-by-step developer guide, workflows, diagnostic tools, and quick start.
-- 🛠️ **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Guide for embedding Gpubox in web playgrounds, EdTech LMS, and CI pipelines.
-- 📖 **[API Reference](docs/API_REFERENCE.md)** — Complete typed API reference (`createSimulator`, `compile`, `run`, collectives).
-- 🍳 **[Recipes & Runnables](docs/RECIPES.md)** — 8 tested, runnable integration recipes.
-- ⚠️ **[Material Limitations](docs/LIMITATIONS.md)** — Exact boundaries between supported and unsupported CUDA features.
-- 🔒 **[Security & CSP Guide](docs/SECURITY_AND_CSP.md)** — Content Security Policy requirements and worker isolation.
-- ⚡ **[Performance Guide](docs/PERFORMANCE.md)** — Optimization strategies for browser and Node execution.
-- 📦 **[Versioning & Stability](docs/VERSIONING.md)** — Semantic versioning and schema guarantees.
+- **[User Guide & Quick Start](docs/USAGE.md)** — Step-by-step developer guide, workflows, diagnostic tools, and quick start.
+- **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Guide for embedding Gpubox in web playgrounds, EdTech LMS, and CI pipelines.
+- **[API Reference](docs/API_REFERENCE.md)** — Complete typed API reference (`createSimulator`, `compile`, `run`, collectives).
+- **[Recipes & Runnables](docs/RECIPES.md)** — 8 tested, runnable integration recipes.
+- **[Material Limitations](docs/LIMITATIONS.md)** — Exact boundaries between supported and unsupported CUDA features.
+- **[Security & CSP Guide](docs/SECURITY_AND_CSP.md)** — Content Security Policy requirements and worker isolation.
+- **[Performance Guide](docs/PERFORMANCE.md)** — Optimization strategies for browser and Node execution.
+- **[Versioning & Stability](docs/VERSIONING.md)** — Semantic versioning and schema guarantees.
 
 ---
 
@@ -71,7 +71,7 @@ npm install gpubox
 ## Architecture & Deployment Documentation
 
 For an in-depth breakdown of the simulator internals, WebAssembly compilation, CDN distribution, and known constraints, see:
-👉 **[ARCHITECTURE.md](ARCHITECTURE.md)**
+**[ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ---
 
@@ -168,12 +168,12 @@ npm run test:real-gpu     # 6 physical GPU kernel execution checks (Ada Lovelace
 
 Comprehensive architectural, benchmarking, compatibility, and verification reports are available:
 
-- 📊 **[VERIFICATION_REPORT.md](VERIFICATION_REPORT.md)** — Automated verification run results, 175/175 automated tests, negative testing diagnostics, and physical RTX 4050 GPU execution.
-- 📈 **[BENCHMARK_REPORT.md](BENCHMARK_REPORT.md)** — Comprehensive benchmark matrix covering 1, 2, 4, 8, and 16 GPUs, edge cases, negative tests, and hardware correlation.
-- 📐 **[CUDA_COMPATIBILITY.md](CUDA_COMPATIBILITY.md)** — Feature-by-feature specification of supported, limited, and unsupported CUDA APIs.
-- 🔍 **[AUDIT_REPORT.md](AUDIT_REPORT.md)** — Deep architectural audit of transpilation, SIMT scheduling, and collective communication paths.
-- 🏛️ **[ARCHITECTURE.md](ARCHITECTURE.md)** — Commercial deployment, WebAssembly core, and client-side distribution design.
-- 💡 **[BUSINESS_IDEA.md](BUSINESS_IDEA.md)** — Product positioning, target customer segments, buyer pain points, and commercialization strategy.
+- **[VERIFICATION_REPORT.md](VERIFICATION_REPORT.md)** — Automated verification run results, 175/175 automated tests, negative testing diagnostics, and physical RTX 4050 GPU execution.
+- **[BENCHMARK_REPORT.md](BENCHMARK_REPORT.md)** — Comprehensive benchmark matrix covering 1, 2, 4, 8, and 16 GPUs, edge cases, negative tests, and hardware correlation.
+- **[CUDA_COMPATIBILITY.md](CUDA_COMPATIBILITY.md)** — Feature-by-feature specification of supported, limited, and unsupported CUDA APIs.
+- **[AUDIT_REPORT.md](AUDIT_REPORT.md)** — Deep architectural audit of transpilation, SIMT scheduling, and collective communication paths.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Commercial deployment, WebAssembly core, and client-side distribution design.
+- **[BUSINESS_IDEA.md](BUSINESS_IDEA.md)** — Product positioning, target customer segments, buyer pain points, and commercialization strategy.
 
 ---
 

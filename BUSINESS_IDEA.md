@@ -128,9 +128,9 @@ To maintain credibility with engineering leaders and enterprise buyers, product 
 ┌────────────────────────────────────────────────────────┐
 │                    The Triage Triad                    │
 ├────────────────────────────────────────────────────────┤
-│  ✓ PASS         - Meets defined functional expectations │
-│  ✗ FAIL         - Logic error or output mismatch caught │
-│  ⚠ UNSUPPORTED  - Outside simulator scope (explicit)   │
+│  PASS          - Meets defined functional expectations │
+│  FAIL          - Logic error or output mismatch caught │
+│  UNSUPPORTED   - Outside simulator scope (explicit)   │
 └────────────────────────────────────────────────────────┘
 ```
 
