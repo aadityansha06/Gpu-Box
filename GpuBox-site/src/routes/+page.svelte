@@ -2,8 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { startHero3D } from '../lib/hero3d.js';
   import { PRESETS } from '../lib/presets.js';
-  import { runCUDA, formatCounters } from '../lib/engine.js';
+  import { runCUDA, formatCounters, formatBytes } from '../lib/engine.js';
   import { LINKS, PRICING } from '../lib/config.js';
+  import MemoryBankGrid from '../lib/MemoryBankGrid.svelte';
 
   let canvasRef;
   let stop3D;
@@ -18,8 +19,26 @@
   let runStatus = 'IDLE'; // IDLE | RUNNING | PASS | FAIL | ERROR
   let runOutput = '';
   let runErrors = [];
+  let rawCounters = null;
   let telemetry = null;
   let executionTimeMs = 0;
+  let activeTab = 'terminal';
+
+  let pkgTab = 'npm';
+  const installCommands = {
+    npm: 'npm install @trentorch/gpubox',
+    pnpm: 'pnpm add @trentorch/gpubox',
+    cdn: '<script src="https://cdn.jsdelivr.net/npm/@trentorch/gpubox@1.0.0/dist/gpubox.min.js"><' + '/script>'
+  };
+  let copiedInstall = false;
+
+  function copyInstallCmd() {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(installCommands[pkgTab]);
+      copiedInstall = true;
+      setTimeout(() => copiedInstall = false, 2000);
+    }
+  }
 
   const profiles = [
     { id: 'A100', label: 'NVIDIA A100 SXM4 (80GB, 2039 GB/s)' },
@@ -50,6 +69,7 @@
     runStatus = 'IDLE';
     runOutput = '';
     runErrors = [];
+    rawCounters = null;
     telemetry = null;
   }
 
@@ -59,6 +79,7 @@
     runStatus = 'RUNNING';
     runOutput = 'Transpiling and executing on virtual GPU...';
     runErrors = [];
+    rawCounters = null;
     telemetry = null;
 
     const tStart = performance.now();
@@ -72,6 +93,7 @@
       executionTimeMs = Math.round(performance.now() - tStart);
       runOutput = res.output || (res.ok ? 'Kernel execution completed successfully (no console output).' : '');
       runErrors = res.errors || [];
+      rawCounters = res.counters;
       telemetry = formatCounters(res.counters);
 
       if (res.ok && runErrors.length === 0) {
@@ -124,16 +146,30 @@
       </p>
 
       <div class="hero__actions">
-        <a href="#playground" class="btn btn--primary">Open Playground</a>
-        <a href="#pricing" class="btn btn--ghost">Commercial License</a>
-        <a href="https://github.com/aadityansha06/Gpu-Box/blob/main/docs/USAGE.md" target="_blank" rel="noreferrer" class="btn btn--ghost">Documentation</a>
+        <a href="/playground" class="btn btn--primary">Launch Interactive Playground</a>
+        <a href="/docs" class="btn btn--secondary">Read Documentation</a>
+        <a href="/benchmarks" class="btn btn--secondary">Hardware Verification</a>
+      </div>
+
+      <div class="hero__install-box">
+        <div class="install-tabs">
+          <button class="install-tab {pkgTab === 'npm' ? 'install-tab--active' : ''}" on:click={() => pkgTab = 'npm'}>npm</button>
+          <button class="install-tab {pkgTab === 'pnpm' ? 'install-tab--active' : ''}" on:click={() => pkgTab = 'pnpm'}>pnpm</button>
+          <button class="install-tab {pkgTab === 'cdn' ? 'install-tab--active' : ''}" on:click={() => pkgTab = 'cdn'}>cdn</button>
+        </div>
+        <div class="install-code-row">
+          <code class="install-code">{installCommands[pkgTab]}</code>
+          <button class="copy-install-btn" on:click={copyInstallCmd}>
+            {copiedInstall ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       </div>
 
       <div class="hero__chip">
         <span class="hero__chip-dot"></span>
         <span><strong>175 / 175</strong> Automated Tests Passing</span>
         <span class="hero__chip-sep">&bull;</span>
-        <span>Physically Verified on NVIDIA RTX 4050 Laptop GPU</span>
+        <span>Bit-Exact on NVIDIA RTX 4050 Laptop GPU</span>
         <span class="hero__chip-sep">&bull;</span>
         <span>Zero Server Cost</span>
       </div>
@@ -257,64 +293,91 @@
           <!-- Simulation Output & Telemetry Area -->
           <div class="output-pane">
             <div class="pane-header">
-              <div class="pane-header__left">
-                <span class="pane-header__title">Simulator Output & Telemetry</span>
-                {#if runStatus !== 'IDLE'}
-                  <span class="status-pill status-pill--{runStatus.toLowerCase()}">{runStatus}</span>
-                  <span class="status-time">{executionTimeMs} ms</span>
-                {/if}
+              <div class="pane-header__tabs">
+                <button
+                  class="pane-tab {activeTab === 'terminal' ? 'pane-tab--active' : ''}"
+                  on:click={() => activeTab = 'terminal'}
+                >
+                  Console & Telemetry
+                  {#if runStatus === 'PASS'}
+                    <span class="tab-dot tab-dot--pass"></span>
+                  {:else if runStatus === 'FAIL' || runStatus === 'ERROR'}
+                    <span class="tab-dot tab-dot--fail"></span>
+                  {/if}
+                </button>
+                <button
+                  class="pane-tab {activeTab === 'banks' ? 'pane-tab--active' : ''}"
+                  on:click={() => activeTab = 'banks'}
+                >
+                  32-Bank Memory Grid
+                  {#if rawCounters?.bankConflicts > 0}
+                    <span class="tab-tag-warn">!{rawCounters.bankConflicts}</span>
+                  {/if}
+                </button>
+              </div>
+
+              <div class="pane-header__right">
+                <a href="/playground" class="fullscreen-link" title="Open Fullscreen IDE">
+                  Fullscreen IDE &rarr;
+                </a>
               </div>
             </div>
 
-            <!-- Terminal output -->
-            <div class="terminal-area">
-              {#if runErrors.length > 0}
-                <div class="terminal-errors">
-                  <div class="terminal-errors__title">Diagnostics & Errors Caught:</div>
-                  {#each runErrors as err}
-                    <div class="terminal-error-item">{err}</div>
-                  {/each}
-                </div>
-              {/if}
-
-              {#if runOutput}
-                <pre class="terminal-stdout">{runOutput}</pre>
-              {:else if runErrors.length === 0}
-                <div class="terminal-placeholder">
-                  Click "Run Simulation" to compile and execute kernel.
-                </div>
-              {/if}
-            </div>
-
-            <!-- Telemetry Metrics -->
-            {#if telemetry}
-              <div class="telemetry-bar">
-                <div class="telemetry-item">
-                  <span class="telemetry-label">Threads:</span>
-                  <span class="telemetry-val">{telemetry.threads.toLocaleString()}</span>
-                </div>
-                <div class="telemetry-item">
-                  <span class="telemetry-label">Est. Cycles:</span>
-                  <span class="telemetry-val">{telemetry.cycles.toLocaleString()}</span>
-                </div>
-                <div class="telemetry-item">
-                  <span class="telemetry-label">Global Loads:</span>
-                  <span class="telemetry-val">{telemetry.globalLoads.toLocaleString()}</span>
-                </div>
-                <div class="telemetry-item">
-                  <span class="telemetry-label">Global Stores:</span>
-                  <span class="telemetry-val">{telemetry.globalStores.toLocaleString()}</span>
-                </div>
-                <div class="telemetry-item">
-                  <span class="telemetry-label">Bank Conflicts:</span>
-                  <span class="telemetry-val">{telemetry.bankConflicts}</span>
-                </div>
-                {#if selectedDevices > 1}
-                  <div class="telemetry-item">
-                    <span class="telemetry-label">Cluster Traffic:</span>
-                    <span class="telemetry-val">{telemetry.crossGpuBytes.toLocaleString()} B</span>
+            {#if activeTab === 'terminal'}
+              <!-- Terminal output -->
+              <div class="terminal-area">
+                {#if runErrors.length > 0}
+                  <div class="terminal-errors">
+                    <div class="terminal-errors__title">Diagnostics & Errors Caught:</div>
+                    {#each runErrors as err}
+                      <div class="terminal-error-item">{err}</div>
+                    {/each}
                   </div>
                 {/if}
+
+                {#if runOutput}
+                  <pre class="terminal-stdout">{runOutput}</pre>
+                {:else if runErrors.length === 0}
+                  <div class="terminal-placeholder">
+                    Click "Run Simulation" to compile and execute kernel.
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Telemetry Metrics -->
+              {#if telemetry}
+                <div class="telemetry-bar">
+                  <div class="telemetry-item">
+                    <span class="telemetry-label">Threads:</span>
+                    <span class="telemetry-val">{telemetry.threads.toLocaleString()}</span>
+                  </div>
+                  <div class="telemetry-item">
+                    <span class="telemetry-label">Est. Time:</span>
+                    <span class="telemetry-val">{telemetry.timeMs}</span>
+                  </div>
+                  <div class="telemetry-item">
+                    <span class="telemetry-label">Global Loads:</span>
+                    <span class="telemetry-val">{telemetry.globalLoads.toLocaleString()}</span>
+                  </div>
+                  <div class="telemetry-item">
+                    <span class="telemetry-label">Global Stores:</span>
+                    <span class="telemetry-val">{telemetry.globalStores.toLocaleString()}</span>
+                  </div>
+                  <div class="telemetry-item">
+                    <span class="telemetry-label">Bank Conflicts:</span>
+                    <span class="telemetry-val">{telemetry.bankConflicts}</span>
+                  </div>
+                  {#if selectedDevices > 1}
+                    <div class="telemetry-item">
+                      <span class="telemetry-label">Cluster Traffic:</span>
+                      <span class="telemetry-val">{telemetry.crossGpuBytes}</span>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            {:else if activeTab === 'banks'}
+              <div class="embedded-bank-wrap">
+                <MemoryBankGrid counters={rawCounters} />
               </div>
             {/if}
           </div>
@@ -593,9 +656,79 @@
   .hero__actions {
     display: flex;
     gap: 1rem;
-    margin: 2.25rem 0 2rem;
+    margin: 2rem 0 1.5rem;
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  /* Install Command Box */
+  .hero__install-box {
+    background: #090d16;
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    max-width: 540px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  }
+
+  .install-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .install-tab {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .install-tab--active {
+    color: #10b981;
+    border-bottom-color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .install-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    gap: 1rem;
+  }
+
+  .install-code {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: #38bdf8;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .copy-install-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .copy-install-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .hero__chip {
@@ -796,13 +929,80 @@
   }
 
   .pane-header {
-    height: 2.5rem;
+    height: 2.75rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1rem;
+    padding: 0 0.75rem;
     background: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .pane-header__tabs {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    gap: 0.25rem;
+  }
+
+  .pane-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0 0.75rem;
+    height: 100%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+  }
+
+  .pane-tab:hover {
+    color: #ffffff;
+  }
+
+  .pane-tab--active {
+    color: #ffffff;
+    border-bottom-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+  }
+
+  .tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .tab-dot--pass { background: var(--success); }
+  .tab-dot--fail { background: var(--danger); }
+
+  .tab-tag-warn {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    font-family: var(--font-mono);
+  }
+
+  .fullscreen-link {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-light);
+    transition: color 0.15s ease;
+  }
+
+  .fullscreen-link:hover {
+    color: #ffffff;
+  }
+
+  .embedded-bank-wrap {
+    padding: 1rem;
+    overflow-y: auto;
+    max-height: 440px;
   }
 
   .pane-header__title {
