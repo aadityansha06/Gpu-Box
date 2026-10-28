@@ -1,104 +1,207 @@
 # Gpubox Integration Guide
 
-Gpubox is a headless, client-side CUDA and multi-GPU simulation and pre-validation engine. It allows developers, AI startups, enterprises, and educational platforms to validate CUDA algorithms, test distributed NCCL collectives across 1 to 16 virtual GPUs, and detect logic errors (out-of-bounds, race conditions, collective desync) before spending compute budget on physical GPU infrastructure.
+A production guide for integrating **Gpubox** into web applications, developer playgrounds, EdTech assessment platforms, and CI/CD pipelines.
 
-## Installation
+---
 
+## Installation & Imports
+
+### Node.js & Bundlers (npm / yarn / pnpm)
 ```bash
 npm install gpubox
 ```
 
-## Quick Start Environments
+### Browser Script Tag (CDN / Local Hosting)
+```html
+<script src="https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-sim.min.js"></script>
+<script>
+  const { createSimulator, compile, run, validateOutput } = window.Gpubox;
+</script>
+```
 
-### 1. Node.js CommonJS & CI Runner
+### ES Modules (Vite, Webpack, Next.js, Rollup)
+```javascript
+import { createSimulator, compile, analyze, run, validateOutput } from 'gpubox';
+```
+
+---
+
+## Production Integration Patterns
+
+### 1. Online Coding Playground & IDE Integration
+
+Gpubox can be embedded in browser code editors (such as Monaco Editor or CodeMirror) to run and debug CUDA kernels client-side with zero backend server compute.
+
+```javascript
+import { createSimulator, compile, validateOutput } from 'gpubox';
+
+// Initialize 16-rank virtual cluster
+const sim = createSimulator({
+  gpuProfile: 'A100',
+  numDevices: 16,
+  topology: 'nvswitch_mesh',
+  traceLevel: 'events'
+});
+
+// Hook into simulation events to update the UI in real time
+sim.on('alloc', (ev) => {
+  updateMemoryBar(ev.deviceId, ev.sizeBytes);
+});
+
+sim.on('collective', (ev) => {
+  renderCollectiveAnimation(ev.op, ev.count);
+});
+
+// Run user code from the editor
+async function handleRunCode(userCudaSource) {
+  try {
+    const prog = compile(userCudaSource);
+    const kernelFn = new Function('__rt', prog.transpiledCode + '; return __kernel_main;')();
+    
+    // Allocate device memory and execute
+    const d_out = sim.allocate(1024 * 4, 0);
+    sim.launch(kernelFn, 4, 256, 0, d_out, 1024);
+
+    // Retrieve and display telemetry
+    const counters = sim.getCounters(0).toJSON();
+    renderMetricsTable(counters);
+  } catch (err) {
+    displayErrorDiagnostics(sim.getDiagnostics());
+  }
+}
+```
+
+---
+
+### 2. EdTech Assessment & Autograding Platform
+
+Universities and online platforms can grade student CUDA assignments in the browser without allocating cloud GPUs:
 
 ```javascript
 const { createSimulator, compile, validateOutput } = require('gpubox');
 
-// 1. Initialize virtual GPU cluster (1 to 16 GPUs)
-const sim = createSimulator({ gpuProfile: 'A100', numDevices: 1 });
+function gradeStudentKernel(studentCudaCode) {
+  const sim = createSimulator({
+    gpuProfile: 'A100',
+    limits: { maxSteps: 500000, maxTimeMs: 3000 }
+  });
 
-// 2. Allocate device memory
-const N = 128;
-const d_a = sim.allocate(N * 4);
-const d_b = sim.allocate(N * 4);
-const d_c = sim.allocate(N * 4);
+  const prog = compile(studentCudaCode);
+  const kernelFn = new Function('__rt', prog.transpiledCode + '; return __kernel_solution;')();
 
-// 3. Copy host memory to virtual GPU
-sim.memcpy(d_a, new Float32Array(N).fill(1.5), N * 4, 'H2D');
-sim.memcpy(d_b, new Float32Array(N).fill(2.5), N * 4, 'H2D');
+  const N = 512;
+  const d_in = sim.allocate(N * 4);
+  const d_out = sim.allocate(N * 4);
+  sim.memcpy(d_in, testInputData, N * 4, 'H2D');
 
-// 4. Compile and launch CUDA kernel
-const prog = compile(`
-  __global__ void vecAdd(const float* a, const float* b, float* c, int n) {
-      int i = blockIdx.x * blockDim.x + threadIdx.x;
-      if (i < n) c[i] = a[i] + b[i];
-  }
-`);
+  // Launch student kernel
+  sim.launch(kernelFn, 2, 256, 0, d_out, d_in, N);
 
-const kernelFn = new Function('__rt', prog.transpiledCode + '; return __kernel_vecAdd;')();
-sim.launch(kernelFn, 4, 32, 0, d_a, d_b, d_c, N);
+  // Validate output against reference CPU solution
+  const studentResult = new Float32Array(N);
+  sim.memcpy(studentResult, d_out, N * 4, 'D2H');
 
-// 5. Read back results and validate against expected CPU reference
-const h_c = new Float32Array(N);
-sim.memcpy(h_c, d_c, N * 4, 'D2H');
-const verdict = validateOutput(h_c, new Float32Array(N).fill(4.0), { tolerance: 1e-5 });
-console.log('Simulation Verdict:', verdict.verdict); // PASS
+  const check = validateOutput(studentResult, cpuReferenceSolution, { tolerance: 1e-4 });
+  const leaks = sim.getLeakReport();
+
+  return {
+    passed: check.verdict === 'PASS' && leaks.totalLeakedBytes === 0,
+    mismatchCount: check.mismatchCount,
+    leakedBytes: leaks.totalLeakedBytes,
+    diagnostics: sim.getDiagnostics()
+  };
+}
 ```
 
-### 2. Browser ESM (Vite, Webpack, Next.js)
+---
+
+### 3. CI/CD Pre-Commit Gate (Headless CLI)
+
+Catching algorithmic logic and collective synchronization bugs in GitHub Actions before deploying jobs to physical NVIDIA clusters:
 
 ```javascript
-import { createSimulator, compile } from 'gpubox';
+// test-kernels.ci.js
+const { run, validateOutput } = require('gpubox');
+const fs = require('fs');
 
-const sim = createSimulator({ gpuProfile: 'H100', numDevices: 4 });
-// Use identical headless API in modern web frameworks
+const kernelSource = fs.readFileSync('kernels/attention.cu', 'utf8');
+
+const result = run(kernelSource, {
+  gpuProfile: 'A100',
+  numDevices: 8,
+  validation: {
+    expected: referenceAttentionOutput,
+    tolerance: 1e-4
+  }
+});
+
+if (result.status !== 'PASS') {
+  console.error('Validation failed: detected logic or collective bugs!');
+  console.error(result.diagnostics);
+  process.exit(1);
+}
+
+console.log('Kernel validated successfully. Safe for cluster deployment.');
 ```
 
-### 3. CDN Script Tag (UMD)
+---
 
-```html
-<script src="https://cdn.jsdelivr.net/npm/gpubox/dist/cuda-sim.min.js"></script>
-<script>
-  const sim = CudaSimLib.createSimulator({ gpuProfile: 'RTX4090', numDevices: 2 });
-</script>
-```
+### 4. Web Worker Isolation (Background Execution)
 
-### 4. Web Worker (Background Thread)
+To prevent UI thread stutter during large kernel simulations, use `createWorkerSimulator()`:
 
 ```javascript
 import { createWorkerSimulator } from 'gpubox';
 
-const workerSim = createWorkerSimulator({
-  limits: { maxSteps: 100000, maxTimeMs: 5000 }
+const sim = createWorkerSimulator({
+  gpuProfile: 'H100',
+  numDevices: 4,
+  limits: { maxSteps: 1000000, maxTimeMs: 5000 }
 });
+
+const result = await sim.run(`
+  __global__ void matrixProcess(float* out, const float* in, int n) {
+      int idx = blockIdx.x * blockDim.x + threadIdx.x;
+      if (idx < n) out[idx] = in[idx] * 2.0f;
+  }
+`);
+
+console.log('Simulation complete:', result.status);
 ```
 
 ---
 
-## Core Concepts
+## Typed Error Handling
 
-- **Virtual Cluster:** Simulated cluster of 1 to 16 GPUs with per-device VRAM, hardware latency profiles, and peer-to-peer memory access.
-- **Topologies:** Network models including `nvswitch_mesh`, `pcie_tree`, and `multi_node` measuring inter-GPU bandwidth, latency, and pairwise traffic.
-- **Collectives:** Ring and tree models for `ncclAllReduce`, `ncclBroadcast`, `ncclReduceScatter`, `ncclAllGather`, `ncclReduce`, and `ncclAllToAll`.
-- **Desync & Deadlock Detection:** Real-time tracking of rank sequence numbers catching missing ranks, count/type mismatches, and collective ordering bugs without hanging.
-- **Sparse Virtual VRAM:** Virtual memory allocator supporting up to 80 GiB per device (1.28 TiB cluster total) with sub-256 MB real host heap memory.
-
----
-
-## Error Handling & SimError
-
-All runtime and compilation errors are typed:
+All simulator exceptions inherit from `SimError`, providing structured error categories, source location, and direct documentation links:
 
 ```javascript
-const { SimError } = require('gpubox');
+const { createSimulator, SimError } = require('gpubox');
+const sim = createSimulator();
 
 try {
-  sim.allocate(-100);
+  sim.allocate(-1024);
 } catch (err) {
   if (err instanceof SimError) {
-    console.error(`[${err.code}] ${err.message}`);
-    console.error(`Documentation: ${err.docsUrl}`);
+    console.error(`Error Code: ${err.code}`);
+    console.error(`Category: ${err.category}`);
+    console.error(`Message: ${err.message}`);
+    console.error(`Docs: ${err.docsUrl}`);
   }
 }
 ```
+
+---
+
+## Commercial Distribution & EaaS Architecture
+
+Gpubox is designed for commercial deployment as a licensed, client-side simulation engine (Engine-as-a-Service):
+
+- **Zero Cloud Infrastructure Cost**: 100% of the simulation compute executes on the client device (browser or on-premises Node.js process). The platform provider does not pay backend cloud GPU fees.
+- **Data Privacy**: Customer CUDA kernels never leave the user machine or corporate VPC.
+- **IP Protection**: The C++ core is compiled to binary WebAssembly (`.wasm`), and JavaScript runtimes are minified to protect proprietary logic.
+- **Enterprise Offline Licensing**: Supports cryptographic license key verification for corporate seat-based or domain-based agreements without internet phone-homes.
+
+---
+
+Copyright (c) 2026 Aadityansha Verma. All rights reserved. Commercial License.

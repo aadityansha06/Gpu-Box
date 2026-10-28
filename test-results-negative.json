@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-28T10:43:37.869Z",
+  "timestamp": "2026-10-28T11:20:25.213Z",
   "environment": {
     "nodeVersion": "v26.8.1",
     "platform": "win32",
@@ -9,14 +9,14 @@
     "total": 31,
     "passed": 31,
     "failed": 0,
-    "durationMs": 51
+    "durationMs": 43
   },
   "tests": [
     {
       "category": "1. Indexing & Bounds",
       "name": "Off-by-one loop boundary (i <= n OOB write caught)",
       "status": "PASS",
-      "durationMs": 31,
+      "durationMs": 26,
       "error": null
     },
     {
@@ -58,14 +58,14 @@
       "category": "3. Reduction & Arithmetic",
       "name": "Reduction with incorrect stride leaves elements unsummed",
       "status": "PASS",
-      "durationMs": 7,
+      "durationMs": 4,
       "error": null
     },
     {
       "category": "3. Reduction & Arithmetic",
       "name": "Vector normalization of zero vector yields NaN/div-by-zero",
       "status": "PASS",
-      "durationMs": 3,
+      "durationMs": 2,
       "error": null
     },
     {
@@ -86,14 +86,14 @@
       "category": "5. Collectives & Rank Limits",
       "name": "ncclBroadcast with negative root rejected (root < 0)",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
       "category": "5. Collectives & Rank Limits",
       "name": "ncclAllReduce with mismatched buffer array length rejected",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
@@ -170,7 +170,7 @@
       "category": "7. Diagnostics & State Isolation",
       "name": "Failing kernel followed by reset() leaves 0 stale metrics or diagnostics",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
@@ -184,7 +184,7 @@
       "category": "8. Allocation & Configuration Limits",
       "name": "cudaFree double-free rejected (cudaErrorInvalidValue)",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
@@ -219,7 +219,7 @@
       "category": "8. Allocation & Configuration Limits",
       "name": "Multi-GPU cross-device pointer access without peer access rejected",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {

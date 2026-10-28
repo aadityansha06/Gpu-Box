@@ -1,42 +1,45 @@
-# Gpubox User Guide & Usage Manual
+# Gpubox User Guide & Client Manual
 
-> **Gpubox** is a browser-based CUDA and multi-GPU simulation and pre-validation library. It allows AI engineers, startups, and enterprises to catch CUDA logic bugs, memory hazards, and collective communication desynchronizations before spending money on physical GPU hardware.
+Welcome to the official developer guide for **Gpubox** (v1.0.0).
+
+Gpubox is a browser-based CUDA and multi-GPU simulation and pre-validation library. It allows AI engineers, startups, enterprise teams, and educational platforms to validate CUDA algorithms, verify numerical correctness against references, experiment with virtual 1–16 GPU clusters, and detect memory hazards before spending budget on physical GPU hardware.
 
 ---
 
-## 1. Installation
+## 1. Installation & Setup
 
-### Node.js / Bundlers (npm / yarn / pnpm)
+### Option A: npm / yarn / pnpm (Node.js & Bundlers)
 ```bash
 npm install gpubox
 ```
 
-### Browser Script Tag (CDN)
+### Option B: Direct Browser Script Tag (CDN / Local Hosting)
 ```html
 <script src="https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-sim.min.js"></script>
 <script>
-  const { createSimulator, compile, validateOutput } = window.Gpubox;
+  // Available globally under window.Gpubox
+  const { createSimulator, compile, run, validateOutput } = window.Gpubox;
 </script>
 ```
 
-### ES Modules (Vite, Webpack, Next.js)
+### Option C: ES Modules (Vite, Webpack, Next.js, Rollup)
 ```javascript
 import { createSimulator, compile, analyze, run, validateOutput } from 'gpubox';
 ```
 
 ---
 
-## 2. Quick Start: Single-Kernel Execution
+## 2. Quick Start: Vector Addition in 60 Seconds
 
-Here is a minimal 10-line example that compiles a vector addition kernel, allocates virtual device memory, executes the kernel on a simulated NVIDIA A100 GPU, copies results back, and validates accuracy:
+The following self-contained example initializes a virtual NVIDIA A100 GPU, compiles a CUDA C++ kernel, uploads host memory, executes across 4 blocks of 256 threads, reads back the output, and validates numerical correctness:
 
 ```javascript
 const { createSimulator, compile, validateOutput } = require('gpubox');
 
-// 1. Initialize simulator with target GPU profile
+// 1. Initialize simulator with target GPU hardware profile
 const sim = createSimulator({ gpuProfile: 'A100', numDevices: 1 });
 
-// 2. Transpile CUDA C++ kernel to client-side SIMT execution
+// 2. Compile CUDA C++ kernel source
 const prog = compile(`
   __global__ void vecAdd(const float* a, const float* b, float* c, int n) {
       int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -46,7 +49,7 @@ const prog = compile(`
   }
 `);
 
-// 3. Allocate device memory & upload host buffers
+// 3. Allocate virtual device memory & copy data from host (H2D)
 const N = 1024;
 const d_a = sim.allocate(N * 4);
 const d_b = sim.allocate(N * 4);
@@ -55,27 +58,32 @@ const d_c = sim.allocate(N * 4);
 sim.memcpy(d_a, new Float32Array(N).fill(1.5), N * 4, 'H2D');
 sim.memcpy(d_b, new Float32Array(N).fill(2.5), N * 4, 'H2D');
 
-// 4. Launch kernel (gridDim=4, blockDim=256, sharedMem=0)
+// 4. Launch kernel across grid (gridDim=4 blocks, blockDim=256 threads, sharedMem=0 bytes)
 const kernelFn = new Function('__rt', prog.transpiledCode + '; return __kernel_vecAdd;')();
 sim.launch(kernelFn, 4, 256, 0, d_a, d_b, d_c, N);
 
-// 5. Download result & validate
+// 5. Copy result from device back to host (D2H) and validate
 const h_c = new Float32Array(N);
 sim.memcpy(h_c, d_c, N * 4, 'D2H');
 
 const verdict = validateOutput(h_c, new Float32Array(N).fill(4.0), { tolerance: 1e-5 });
-console.log('Verdict:', verdict.verdict); // 'PASS'
+console.log('Validation Verdict:', verdict.verdict); // 'PASS'
 
-// 6. Inspect modeled telemetry
+// 6. Read hardware metrics & counters
 const counters = sim.getCounters().toJSON();
-console.log(`Executed: ${counters.instructionsExecuted} instructions, ${counters.globalLoads} loads, ${counters.globalStores} stores.`);
+console.log(`Instructions: ${counters.instructionsExecuted}`);
+console.log(`Global Loads: ${counters.globalLoads} (${counters.globalLoadBytes} bytes)`);
+console.log(`Global Stores: ${counters.globalStores} (${counters.globalStoreBytes} bytes)`);
 ```
 
 ---
 
-## 3. High-Level One-Shot Runner
+## 3. How Customers Access Functions: The Complete Catalog
 
-If you prefer a one-line execution that handles compilation, execution, metric aggregation, and structured reporting automatically:
+Gpubox gives developers multiple ways to interact with the engine depending on their workflow.
+
+### 3.1. Method 1: The One-Shot Runner (`run`)
+When you want to compile and execute a complete CUDA program (with host `main()`) in one step without manual memory management:
 
 ```javascript
 const { run } = require('gpubox');
@@ -97,22 +105,75 @@ const source = `
 `;
 
 const result = run(source, { gpuProfile: 'A100', numDevices: 1 });
-console.log('Status:', result.status); // 'PASS'
-console.log('Estimated Time:', result.estimatedTimeMs, 'ms');
-console.log('Leak Report:', result.leakReport); // { totalAllocations: 0, totalLeakedBytes: 0, leaks: [] }
+console.log('Run Status:', result.status); // 'PASS'
+console.log('Estimated Wall Time:', result.estimatedTimeMs, 'ms');
+console.log('Memory Leaks:', result.leakReport.totalLeakedBytes); // 0 bytes
+```
+
+### 3.2. Method 2: Standard CUDA Driver API Aliases
+If porting existing CUDA C host code, Gpubox provides 1:1 aliases matching standard CUDA Driver and Runtime APIs:
+
+```javascript
+const sim = createSimulator({ gpuProfile: 'A100', numDevices: 2 });
+
+// CUDA Driver API calls
+sim.cudaSetDevice(0); // Switch to virtual GPU 0
+const d_x = sim.cudaMalloc(1024 * 4);
+sim.cudaMemcpy(d_x, hostData, 1024 * 4, 'H2D');
+
+// Peer-to-peer memory copy between GPU 0 and GPU 1
+sim.cudaDeviceEnablePeerAccess(1);
+sim.cudaMemcpyPeer(d_y, 1, d_x, 0, 1024 * 4);
+
+// Free memory
+sim.cudaFree(d_x);
+```
+
+### 3.3. Method 3: Static Pre-Execution Analysis (`analyze`)
+To check whether user code contains unsupported CUDA features before running:
+
+```javascript
+const { analyze } = require('gpubox');
+
+const analysis = analyze(`
+  __global__ void unsupported() {
+      asm("nop;"); // Inline PTX assembly
+  }
+`);
+
+if (!analysis.success) {
+  console.log('Feature rejected:', analysis.unsupportedFeatures[0].feature);
+  console.log('Reason:', analysis.unsupportedFeatures[0].reason);
+}
+```
+
+### 3.4. Method 4: Automated Output Validation (`validateOutput`)
+Supports three tolerance modes: absolute, relative, and float32 ULP:
+
+```javascript
+const { validateOutput } = require('gpubox');
+
+// Mode 1: Absolute difference (default)
+const res1 = validateOutput(actualArray, expectedArray, { tolerance: 1e-4, mode: 'abs' });
+
+// Mode 2: Relative difference
+const res2 = validateOutput(actualArray, expectedArray, { tolerance: 1e-3, mode: 'relative' });
+
+// Mode 3: Float32 ULP (Unit in the Last Place)
+const res3 = validateOutput(actualArray, expectedArray, { tolerance: 4, mode: 'ulp' });
 ```
 
 ---
 
 ## 4. Multi-GPU Cluster Simulation (1–16 Virtual GPUs)
 
-Gpubox simulates distributed clusters with 1 to 16 virtual GPU nodes, rank-isolated memory spaces, and ring-based NCCL collectives.
+Gpubox simulates distributed clusters with 1 to 16 virtual GPU nodes, isolated device memory spaces, and ring-based NCCL collectives.
 
-### 16-GPU AllReduce Example
+### 16-GPU AllReduce Example:
 ```javascript
 const { createSimulator, validateOutput } = require('gpubox');
 
-// Initialize a 16-GPU cluster with NVSwitch mesh topology
+// 1. Create a 16-GPU cluster with NVSwitch mesh interconnect
 const sim = createSimulator({
   gpuProfile: 'A100',
   numDevices: 16,
@@ -120,34 +181,34 @@ const sim = createSimulator({
 });
 
 const count = 1024;
-const sendBuffers = [];
-const recvBuffers = [];
+const sendBufs = [];
+const recvBufs = [];
 
-// Allocate memory per virtual rank
+// 2. Allocate memory and initialize inputs per rank
 for (let rank = 0; rank < 16; rank++) {
   const s = sim.allocate(count * 4, rank);
   const r = sim.allocate(count * 4, rank);
-  // Fill each rank with rank+1 (1.0 on rank 0, 2.0 on rank 1, ..., 16.0 on rank 15)
+  // Rank 0 has 1.0, Rank 1 has 2.0, ..., Rank 15 has 16.0
   sim.memcpy(s, new Float32Array(count).fill(rank + 1), count * 4, 'H2D');
-  sendBuffers.push(s);
-  recvBuffers.push(r);
+  sendBufs.push(s);
+  recvBufs.push(r);
 }
 
-// Execute 16-rank ring AllReduce (SUM)
-sim.allReduce(sendBuffers, recvBuffers, count, 'float32', 'sum');
+// 3. Execute 16-rank ring AllReduce (SUM)
+sim.allReduce(sendBufs, recvBufs, count, 'float32', 'sum');
 
-// Verify output on rank 0 (Sum 1..16 = 136.0)
-const hostOut = new Float32Array(count);
-sim.memcpy(hostOut, recvBuffers[0], count * 4, 'D2H');
-const verdict = validateOutput(hostOut, new Float32Array(count).fill(136.0), { tolerance: 1e-4 });
-console.log('Cluster AllReduce Verdict:', verdict.verdict); // 'PASS'
+// 4. Verify output on rank 0 (Sum 1..16 = 136.0)
+const h_out = new Float32Array(count);
+sim.memcpy(h_out, recvBufs[0], count * 4, 'D2H');
+const verdict = validateOutput(h_out, new Float32Array(count).fill(136.0));
+console.log('AllReduce Status:', verdict.verdict); // 'PASS'
 
-// Inspect 16x16 ring communication traffic matrix
-const counters = sim.getCounters(0).toJSON();
-console.log(`Rank 0 cross-GPU ring traffic: ${counters.crossGpuBytes.toLocaleString()} bytes`);
+// 5. Inspect 16x16 pairwise inter-GPU traffic
+const rank0Counters = sim.getCounters(0).toJSON();
+console.log(`Rank 0 Cross-GPU Ring Traffic: ${rank0Counters.crossGpuBytes.toLocaleString()} bytes`);
 ```
 
-### Supported Collectives
+### Supported Collective Operations:
 - `sim.allReduce(sendbufs, recvbufs, count, datatype, op, comm)` (SUM, MAX, MIN, PROD, AVG)
 - `sim.broadcast(sendbufs, recvbufs, count, datatype, root, comm)`
 - `sim.allGather(sendbufs, recvbufs, sendcount, datatype, comm)`
@@ -158,74 +219,48 @@ console.log(`Rank 0 cross-GPU ring traffic: ${counters.crossGpuBytes.toLocaleStr
 
 ---
 
-## 5. Diagnostic Tools & Bug Detection
+## 5. Diagnostic Tools & Hazard Detection
 
-Gpubox includes deep instrumentation that triggers automated diagnostics for common CUDA pitfalls:
+Gpubox includes automated safety and diagnostic detectors:
 
-### 1. Shared Memory Race Detector
-Detects Read-After-Write (RAW), Write-After-Read (WAR), and Write-After-Write (WAW) hazards between threads in the same block across barrier epochs (`__syncthreads()`):
+### 1. Shared Memory Race Hazard Detector
+Flags Read-After-Write (RAW), Write-After-Read (WAR), and Write-After-Write (WAW) hazards between threads across barrier epochs when `__syncthreads()` is omitted:
 ```javascript
-const { createSimulator, compile } = require('gpubox');
 const sim = createSimulator({ raceDetection: true });
-
-// Deliberate shared memory race: thread 0 writes while thread 1 reads without __syncthreads()
-const code = `
-  __global__ void buggyRace(float* out) {
-      __shared__ float s[32];
-      int tid = threadIdx.x;
-      s[tid] = tid * 2.0f;
-      // BUG: missing __syncthreads() before reading neighbor's shared slot
-      out[tid] = s[(tid + 1) % 32];
-  }
-`;
-const prog = compile(code);
-const kernelFn = new Function('__rt', prog.transpiledCode + '; return __kernel_buggyRace;')();
-const d_out = sim.allocate(32 * 4);
-sim.launch(kernelFn, 1, 32, 0, d_out);
-
+// If threads in the same block access shared memory slots without __syncthreads():
 const diags = sim.getDiagnostics();
-console.log('Detected Hazards:', diags.filter(d => d.category === 'RACE_CONDITION'));
+const races = diags.filter(d => d.category === 'RACE_CONDITION');
 ```
 
 ### 2. Multi-GPU Desync & Deadlock Detector
-Identifies communicator mismatches before a physical cluster hangs:
-- Missing ranks in collective calls
-- Count mismatches between ranks
-- Root rank divergence
-- Collective operation order divergence
+Catches rank sequence mismatches, count mismatches, and collective ordering bugs before they hang physical GPU hardware clusters.
 
 ### 3. Runaway Loop Watchdog
-Guards against infinite loops (`while(true) {}`) or runaway thread code by automatically aborting execution after step or execution time limits, pinpointing the kernel name, block, and thread index.
+Automatically aborts infinite loops (`while(true) {}`) and names the kernel, block, and thread responsible.
 
-### 4. Virtual Sparse VRAM & Leak Reporting
-Simulates up to 80 GiB virtual VRAM per device without consuming host RAM using on-demand 64 KB paging. `sim.getLeakReport()` tracks unfreed pointers and reports byte counts and allocations.
+### 4. Virtual Sparse VRAM & Memory Leak Tracking
+Models up to 80 GiB virtual VRAM per device using 64 KB sparse paging without consuming host RAM. `sim.getLeakReport()` tracks any unfreed allocations.
 
 ---
 
-## 6. Pre-Execution Static Analysis
+## 6. Telemetry & Event Hooks
 
-Before executing, use `analyze(code)` to verify compatibility with supported CUDA features:
+You can monitor simulation execution in real time:
 
 ```javascript
-const { analyze } = require('gpubox');
+const sim = createSimulator({ traceLevel: 'events' });
 
-const res = analyze(`
-  __global__ void unsupportedKernel() {
-      asm("nop;"); // Inline PTX
-  }
-`);
-
-if (!res.success) {
-  console.error('Compatibility failure:', res.diagnostics[0].message);
-  console.error('Docs:', res.diagnostics[0].docsUrl);
-}
+sim.on('alloc', (ev) => console.log(`Allocated ${ev.sizeBytes} bytes on GPU ${ev.deviceId}`));
+sim.on('memcpy', (ev) => console.log(`Memcpy ${ev.kind}: ${ev.sizeBytes} bytes`));
+sim.on('kernel_start', (ev) => console.log(`Kernel started on grid`, ev.gridDim));
+sim.on('collective', (ev) => console.log(`Collective ${ev.op} count: ${ev.count}`));
 ```
 
 ---
 
-## 7. Web Worker Isolation (Non-Blocking Simulation)
+## 7. Web Worker Isolation (Background Execution)
 
-To run simulations in background browser threads without freezing the UI:
+To run simulations in background browser threads without blocking the UI:
 
 ```javascript
 import { createWorkerSimulator } from 'gpubox';
@@ -238,27 +273,27 @@ const result = await sim.run(`
   }
 `);
 
-console.log('Worker Result Status:', result.status);
+console.log('Worker Result:', result.status);
 ```
 
 ---
 
 ## 8. Hardware Profiles & Cluster Topologies
 
-### Available GPU Profiles (`listProfiles()`)
+### GPU Profiles (`listProfiles()`)
 - `A100`: NVIDIA A100 SXM4 80GB (Ampere, 108 SMs, 2039 GB/s HBM2e)
 - `H100`: NVIDIA H100 SXM5 80GB (Hopper, 132 SMs, 3350 GB/s HBM3)
 - `RTX 4090`: NVIDIA GeForce RTX 4090 (Ada Lovelace, 128 SMs, 1008 GB/s GDDR6X)
-- `RTX 4050 Laptop`: NVIDIA GeForce RTX 4050 Laptop GPU (Ada Lovelace, 20 SMs, 192 GB/s GDDR6) — *Physically verified on hardware*
-- `RTX 5060 Ti`: Modeled Next-Gen Architecture (`sm_120 [TO VERIFY]`, 36 SMs, 288 GB/s)
+- `RTX 4050 Laptop`: NVIDIA GeForce RTX 4050 Laptop GPU (Ada Lovelace, 20 SMs, 192 GB/s GDDR6) — *Physically verified*
+- `RTX 5060 Ti`: Modeled Architecture (`sm_120 [TO VERIFY]`, 36 SMs, 288 GB/s)
 - `RTX 3090`: NVIDIA GeForce RTX 3090 (Ampere, 82 SMs, 936 GB/s)
 - `V100`: NVIDIA Tesla V100 SXM2 16GB (Volta, 80 SMs, 900 GB/s HBM2)
 
-### Available Topologies (`listTopologies()`)
-- `nvswitch_mesh`: All-to-all crossbar interconnect (full bidirectional NVLink bandwidth)
-- `ring`: Unidirectional / bidirectional ring interconnect
-- `torus_2d`: 2D Torus grid mesh for large virtual clusters
-- `pcie_tree`: Host-mediated PCIe Gen 4/5 tree with root complex bottleneck
+### Cluster Topologies (`listTopologies()`)
+- `nvswitch_mesh`: All-to-all crossbar interconnect with bidirectional NVLink bandwidth.
+- `ring`: Unidirectional / bidirectional ring interconnect.
+- `torus_2d`: 2D Torus grid mesh for virtual multi-node clusters.
+- `pcie_tree`: Host-mediated PCIe Gen 4/5 tree with root complex bottleneck.
 
 ---
 
@@ -276,3 +311,5 @@ Gpubox is commercially licensed under a client-side delivery model:
 ## 10. Legal & Trademark Disclaimer
 
 > **Disclaimer**: Gpubox is not affiliated with, sponsored by, or endorsed by NVIDIA Corporation. CUDA, NVIDIA, NVLink, and NVSwitch are registered trademarks or trademarks of NVIDIA Corporation. All trademarks are used strictly for reference purposes to identify software compatibility and architectural profiles.
+
+Copyright (c) 2026 Aadityansha Verma. All rights reserved. Commercial License.
