@@ -1,0 +1,59 @@
+{
+  "device": "NVIDIA GeForce RTX 4050 Laptop GPU\u0000                                                                                             ",
+  "computeCapability": "8.9",
+  "arch": "sm_89",
+  "totalVRAMBytes": 6438780928,
+  "kernelsTested": 6,
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "kernel": "Vector Addition",
+      "status": "PASS",
+      "numericalMatch": "Bit-exact (max err = 0.0)",
+      "physicalGpuTimeUs": 96.77,
+      "modeledSimCycles": 1280,
+      "modeledSimTimeUs": 0.85
+    },
+    {
+      "kernel": "L2 Normalization",
+      "status": "PASS",
+      "numericalMatch": "Accurate (norm err = 3.87e-07)",
+      "physicalGpuTimeUs": 28.67,
+      "modeledSimCycles": 2150,
+      "modeledSimTimeUs": 1.43
+    },
+    {
+      "kernel": "Tiled Matrix Multiplication",
+      "status": "PASS",
+      "numericalMatch": "Bit-exact (max err = 0.0)",
+      "physicalGpuTimeUs": 30.72,
+      "modeledSimCycles": 8420,
+      "modeledSimTimeUs": 5.61
+    },
+    {
+      "kernel": "Atomic Histogram 256",
+      "status": "PASS",
+      "numericalMatch": "Bit-exact (all 256 bins match)",
+      "physicalGpuTimeUs": 30.72,
+      "modeledSimCycles": 3200,
+      "modeledSimTimeUs": 2.13
+    },
+    {
+      "kernel": "Shared Memory Transpose",
+      "status": "PASS",
+      "numericalMatch": "Bit-exact (max err = 0.0)",
+      "physicalGpuTimeUs": 23.55,
+      "modeledSimCycles": 1840,
+      "modeledSimTimeUs": 1.23
+    },
+    {
+      "kernel": "Softmax Forward",
+      "status": "PASS",
+      "numericalMatch": "Accurate (max err = 2.98e-08)",
+      "physicalGpuTimeUs": 10.24,
+      "modeledSimCycles": 2450,
+      "modeledSimTimeUs": 1.63
+    }
+  ]
+}

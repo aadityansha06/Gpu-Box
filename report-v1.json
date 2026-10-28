@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0.0",
+  "engineVersion": "1.0.0",
+  "status": "PASS",
+  "stdout": [],
+  "outputs": {},
+  "counters": {
+    "threadsLaunched": 0,
+    "blocksLaunched": 0,
+    "globalLoads": 0,
+    "globalStores": 0,
+    "globalLoadBytes": 0,
+    "globalStoreBytes": 0,
+    "totalBytesRead": 0,
+    "totalBytesWritten": 0,
+    "globalTransactions": 0,
+    "coalescedTransactions": 0,
+    "dramReadBytes": 0,
+    "dramWriteBytes": 0,
+    "sharedLoads": 0,
+    "sharedStores": 0,
+    "sharedLoadBytes": 0,
+    "sharedStoreBytes": 0,
+    "bankConflicts": 0,
+    "syncthreadsCount": 0,
+    "divergentBranches": 0,
+    "atomicOps": 0,
+    "atomicMaxContention": 0,
+    "memcpyH2DBytes": 0,
+    "memcpyD2HBytes": 0,
+    "crossGpuBytes": 0,
+    "ncclOps": 0,
+    "flopCount": 0,
+    "estimatedCycles": 0,
+    "estimatedTimeMs": 0,
+    "computeUtilization": 0,
+    "memoryUtilization": 0,
+    "occupancy": 0
+  },
+  "diagnostics": [],
+  "collectives": [],
+  "trafficMatrix": [
+    [
+      0
+    ]
+  ],
+  "estimatedTimeMs": 0,
+  "leakReport": {
+    "totalAllocations": 0,
+    "totalLeakedBytes": 0,
+    "leaks": []
+  }
+}

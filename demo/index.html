@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gpubox — Client-Side CUDA GPU & Cluster Simulator</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-hover: #1f2937;
+      --border: #374151;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --green: #10b981;
+      --green-dark: #059669;
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+      --purple: #8b5cf6;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: #000;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+
+    .select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .select-wrap label {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus { border-color: var(--cyan); }
+
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-run {
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-run:hover { background: var(--green-dark); }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: #374151; }
+
+    /* Main Workspace Split */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left: Monaco Editor */
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      min-width: 320px;
+      background: #1e1e1e;
+    }
+
+    .editor-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .file-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .file-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+    }
+
+    #editor {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Right: Results / Profiling Panel */
+    .results-container {
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .tabs {
+      display: flex;
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+      background: rgba(6, 182, 212, 0.05);
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+      font-size: 13px;
+    }
+    .tab-content.active { display: block; }
+
+    /* Output console */
+    .console-out {
+      background: #080c14;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.5;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 180px;
+    }
+
+    .console-out .log-error { color: var(--red); font-weight: 600; }
+    .console-out .log-success { color: var(--green); font-weight: 600; }
+    .console-out .log-info { color: var(--cyan); }
+    .console-out .log-warn { color: var(--orange); }
+
+    /* Hardware & Metrics Cards */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .metric-card .title {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .metric-card .value {
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .metric-card .subtitle {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Table */
+    .counter-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .counter-table th, .counter-table td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .counter-table th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .counter-table td:last-child {
+      text-align: right;
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+
+    .badge-highlight {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .badge-warn {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--orange);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Bottom status bar */
+    footer {
+      background: #090d16;
+      border-top: 1px solid var(--border);
+      padding: 6px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo-badge">GPUBOX</span>
+    <span class="title">Supported CUDA GPU & Cluster Simulator</span>
+  </div>
+
+  <div class="controls-group">
+    <!-- Presets / Quick Templates -->
+    <div class="select-wrap">
+      <label for="preset-select">Preset:</label>
+      <select id="preset-select">
+        <option value="vector_add">Vector Addition (Grid & Blocks)</option>
+        <option value="matmul_shared">2D Tiled MatMul (__shared__)</option>
+        <option value="warp_reduction">Warp Reduction (__shfl_down_sync)</option>
+        <option value="atomic_histogram">Atomic Histogram (atomicAdd)</option>
+        <option value="multi_gpu_nccl">Multi-GPU Ring AllReduce (NCCL)</option>
+        <option value="inference_cluster">LLM Inference Cluster & Overload Traffic (70B)</option>
+        <option value="custom">Blank / Custom CUDA Code</option>
+      </select>
+    </div>
+
+    <!-- GPU Profile Selector -->
+    <div class="select-wrap">
+      <label for="gpu-select">GPU Profile:</label>
+      <select id="gpu-select">
+        <option value="A100" selected>NVIDIA A100 (80GB HBM2e, Ampere)</option>
+        <option value="H100">NVIDIA H100 (80GB HBM3, Hopper)</option>
+        <option value="RTX 4090">NVIDIA RTX 4090 (24GB, Ada)</option>
+        <option value="RTX 5060 Ti">NVIDIA RTX 5060 Ti (16GB, Blackwell - Projected)</option>
+        <option value="RTX 4050 Laptop">NVIDIA RTX 4050 Laptop (6GB, Ada)</option>
+        <option value="RTX 3090">NVIDIA RTX 3090 (24GB, Ampere)</option>
+        <option value="V100">NVIDIA V100 (32GB, Volta)</option>
+      </select>
+    </div>
+
+    <!-- Cluster Nodes / Device Count -->
+    <div class="select-wrap">
+      <label for="cluster-select">Cluster Nodes:</label>
+      <select id="cluster-select">
+        <option value="1" selected>1 GPU (Single Device)</option>
+        <option value="2">2 GPUs (Dual Node)</option>
+        <option value="4">4 GPUs (Quad Node)</option>
+        <option value="8">8 GPUs (Octa Node / DGX)</option>
+        <option value="16">16 GPUs (Cluster Pod)</option>
+      </select>
+    </div>
+
+    <!-- Run & Action buttons -->
+    <button class="btn btn-run" id="btn-run" title="Execute supported CUDA code (Ctrl + Enter)">
+      ▶ Run Simulation
+    </button>
+    <button class="btn btn-secondary" id="btn-clear">
+      Clear
+    </button>
+  </div>
+</header>
+
+<div class="workspace">
+  <!-- Left Editor -->
+  <div class="editor-container">
+    <div class="editor-header">
+      <div class="file-tab">
+        <span class="file-dot"></span>
+        <span id="editor-filename">kernel.cu</span>
+      </div>
+      <div style="color:var(--muted); font-size:11px;">
+        Any CUDA C++ code (Transpiled & Simulated client-side)
+      </div>
+    </div>
+    <div id="editor"></div>
+  </div>
+
+  <!-- Right Results Panel -->
+  <div class="results-container">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-output">Output & Logs</button>
+      <button class="tab-btn" data-tab="tab-hardware">GPU Metrics</button>
+      <button class="tab-btn" data-tab="tab-memory">Memory & Warp</button>
+      <button class="tab-btn" data-tab="tab-multigpu">Cluster / NCCL</button>
+      <button class="tab-btn" data-tab="tab-transpiled">Transpiled JS</button>
+    </div>
+
+    <!-- Tab 1: Output -->
+    <div class="tab-content active" id="tab-output">
+      <div style="font-weight:600; margin-bottom:6px; font-size:12px; color:var(--muted)">Device & Host Output:</div>
+      <div class="console-out" id="console-output">// Press "Run Simulation" (or Ctrl+Enter) to execute your CUDA code...</div>
+    </div>
+
+    <!-- Tab 2: Hardware Metrics -->
+    <div class="tab-content" id="tab-hardware">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="title">Est. Execution Time</div>
+          <div class="value" id="m-time">0.000 ms</div>
+          <div class="subtitle" id="m-cycles">0 cycles</div>
+        </div>
+        <div class="metric-card">
+          <div class="title">Compute Utilization</div>
+          <div class="value" id="m-compute-util">0.0%</div>
+          <div class="subtitle" id="m-flops">0 FLOPs</div>
+        </div>
+        <div class="metric-card">
+          <div class="title">Mem Bandwidth Util</div>
+          <div class="value" id="m-mem-util">0.0%</div>
+          <div class="subtitle" id="m-bandwidth-spec">-</div>
+        </div>
+        <div class="metric-card">
+          <div class="title">Occupancy</div>
+          <div class="value" id="m-occupancy">0.0%</div>
+          <div class="subtitle" id="m-threads-blocks">0 threads / 0 blocks</div>
+        </div>
+      </div>
+
+      <div class="section-title">Active GPU Specifications</div>
+      <table class="counter-table" id="table-gpu-spec">
+        <tr><td>GPU Model</td><td id="spec-name">-</td></tr>
+        <tr><td>Architecture</td><td id="spec-arch">-</td></tr>
+        <tr><td>Compute Capability</td><td id="spec-sm">-</td></tr>
+        <tr><td>Streaming Multiprocessors (SM)</td><td id="spec-sm-count">-</td></tr>
+        <tr><td>Peak FP32 Compute</td><td id="spec-peak-tflops">-</td></tr>
+        <tr><td>Peak Memory Bandwidth</td><td id="spec-peak-bw">-</td></tr>
+        <tr><td>Shared Memory / Block</td><td id="spec-shared-max">-</td></tr>
+        <tr><td>Interconnect</td><td id="spec-interconnect">-</td></tr>
+      </table>
+    </div>
+
+    <!-- Tab 3: Memory & Warp Profiling -->
+    <div class="tab-content" id="tab-memory">
+      <div class="section-title">Global Memory Coalescing</div>
+      <table class="counter-table">
+        <tr><td>Global Loads</td><td id="cnt-g-loads">0</td></tr>
+        <tr><td>Global Stores</td><td id="cnt-g-stores">0</td></tr>
+        <tr><td>Total Bytes Read</td><td id="cnt-g-load-bytes">0 B</td></tr>
+        <tr><td>Total Bytes Written</td><td id="cnt-g-store-bytes">0 B</td></tr>
+        <tr><td>Coalesced Memory Transactions</td><td id="cnt-g-transactions">0</td></tr>
+      </table>
+
+      <div class="section-title">32-Bank Shared Memory</div>
+      <table class="counter-table">
+        <tr><td>Shared Memory Loads</td><td id="cnt-s-loads">0</td></tr>
+        <tr><td>Shared Memory Stores</td><td id="cnt-s-stores">0</td></tr>
+        <tr><td>Shared Memory Volume</td><td id="cnt-s-bytes">0 B</td></tr>
+        <tr><td>Bank Conflicts Detected</td><td id="cnt-s-conflicts"><span class="badge-highlight">0 conflicts</span></td></tr>
+      </table>
+
+      <div class="section-title">Warp & Atomic Operations</div>
+      <table class="counter-table">
+        <tr><td>__syncthreads() Barriers</td><td id="cnt-sync-count">0</td></tr>
+        <tr><td>Branch Divergences</td><td id="cnt-divergence">0</td></tr>
+        <tr><td>Total Atomic Operations</td><td id="cnt-atomic-ops">0</td></tr>
+        <tr><td>Max Atomic Contention</td><td id="cnt-atomic-contention">0</td></tr>
+      </table>
+    </div>
+
+    <!-- Tab 4: Multi-GPU Cluster -->
+    <div class="tab-content" id="tab-multigpu">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="title">Cluster GPU Count</div>
+          <div class="value" id="mgpu-count">1</div>
+          <div class="subtitle">Virtual Devices</div>
+        </div>
+        <div class="metric-card">
+          <div class="title">Cross-GPU Traffic</div>
+          <div class="value" id="mgpu-traffic">0 B</div>
+          <div class="subtitle">Peer / Interconnect</div>
+        </div>
+      </div>
+
+      <div class="section-title">NCCL Collectives & Peer Copies</div>
+      <table class="counter-table">
+        <tr><td>NCCL Operations</td><td id="mgpu-nccl-ops">0</td></tr>
+        <tr><td>Peer Memcpy Volume</td><td id="mgpu-peer-bytes">0 B</td></tr>
+        <tr><td>Host-to-Device (H2D)</td><td id="mgpu-h2d-bytes">0 B</td></tr>
+        <tr><td>Device-to-Host (D2H)</td><td id="mgpu-d2h-bytes">0 B</td></tr>
+      </table>
+
+      <div class="section-title">Cluster Memory Topography</div>
+      <div id="mgpu-nodes-container" style="display:flex; flex-direction:column; gap:8px;">
+        <div style="font-size:12px; color:var(--muted)">Run a simulation with Cluster Nodes &gt; 1 to see individual GPU utilization.</div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Transpiled JavaScript -->
+    <div class="tab-content" id="tab-transpiled">
+      <div style="font-weight:600; margin-bottom:6px; font-size:12px; color:var(--muted)">Generated Simulator JavaScript:</div>
+      <div class="console-out" id="transpiled-output">// Transpiled JavaScript code will appear here...</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-left">
+    <span><span class="status-indicator"></span><span id="status-engine">Virtual CUDA Engine Ready</span></span>
+    <span id="status-gpu-label">NVIDIA A100 (80GB)</span>
+  </div>
+  <div>
+    <span>@trentorch/cuda-sim · Zero Server Compute · Pure Client-side</span>
+  </div>
+</footer>
+
+<!-- Simulator Runtime & Transpiler Scripts -->
+<script src="gpu-profiles.js"></script>
+<script src="cuda-runtime.js"></script>
+<script src="cuda-transpiler.js"></script>
+
+<!-- Monaco Editor Loader -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Presets: Arbitrary, Real CUDA C++ Examples
+// ═══════════════════════════════════════════════════════════════════════════
+const PRESETS = {
+  vector_add: `// Vector Addition in CUDA C++
+#include <cstdio>
+
+__global__ void vectorAdd(const float* a, const float* b, float* c, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        c[i] = a[i] + b[i];
+    }
+}
+
+int main() {
+    int n = 1024;
+    size_t bytes = n * sizeof(float);
+
+    float *d_a, *d_b, *d_c;
+    cudaMalloc(&d_a, bytes);
+    cudaMalloc(&d_b, bytes);
+    cudaMalloc(&d_c, bytes);
+
+    float h_a[1024];
+    float h_b[1024];
+    float h_c[1024];
+
+    for (int i = 0; i < n; i++) {
+        h_a[i] = 1.0f * i;
+        h_b[i] = 2.0f * i;
+    }
+
+    cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice);
+
+    // Launch with 4 blocks of 256 threads
+    dim3 block(256);
+    dim3 grid((n + block.x - 1) / block.x);
+    vectorAdd<<<grid, block>>>(d_a, d_b, d_c, n);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
+
+    printf("Vector Add Verification:\\n");
+    printf("  h_c[0]   = %f (Expected: 0.0)\\n", h_c[0]);
+    printf("  h_c[10]  = %f (Expected: 30.0)\\n", h_c[10]);
+    printf("  h_c[1023] = %f (Expected: 3069.0)\\n", h_c[1023]);
+
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+    return 0;
+}`,
+
+  matmul_shared: `// 2D Matrix Multiplication using Shared Memory Tiling
+#include <cstdio>
+
+#define TILE_SIZE 16
+
+__global__ void matmulTiled(const float* A, const float* B, float* C, int width) {
+    __shared__ float s_a[TILE_SIZE * TILE_SIZE];
+    __shared__ float s_b[TILE_SIZE * TILE_SIZE];
+
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    float sum = 0.0f;
+
+    for (int t = 0; t < width / TILE_SIZE; ++t) {
+        s_a[threadIdx.y * TILE_SIZE + threadIdx.x] = A[row * width + (t * TILE_SIZE + threadIdx.x)];
+        s_b[threadIdx.y * TILE_SIZE + threadIdx.x] = B[(t * TILE_SIZE + threadIdx.y) * width + col];
+        __syncthreads();
+
+        for (int k = 0; k < TILE_SIZE; ++k) {
+            sum += s_a[threadIdx.y * TILE_SIZE + k] * s_b[k * TILE_SIZE + threadIdx.x];
+        }
+        __syncthreads();
+    }
+
+    if (row < width && col < width) {
+        C[row * width + col] = sum;
+    }
+}
+
+int main() {
+    int width = 32;
+    int size = width * width;
+    size_t bytes = size * sizeof(float);
+
+    float *d_A, *d_B, *d_C;
+    cudaMalloc(&d_A, bytes);
+    cudaMalloc(&d_B, bytes);
+    cudaMalloc(&d_C, bytes);
+
+    float h_A[1024];
+    float h_B[1024];
+    float h_C[1024];
+
+    for (int i = 0; i < size; i++) {
+        h_A[i] = 1.0f;
+        h_B[i] = 2.0f;
+    }
+
+    cudaMemcpy(d_A, h_A, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, bytes, cudaMemcpyHostToDevice);
+
+    dim3 block(TILE_SIZE, TILE_SIZE);
+    dim3 grid(width / TILE_SIZE, width / TILE_SIZE);
+    matmulTiled<<<grid, block>>>(d_A, d_B, d_C, width);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(h_C, d_C, bytes, cudaMemcpyDeviceToHost);
+    printf("Tiled MatMul complete. C[0,0] = %f (Expected: 64.0)\\n", h_C[0]);
+
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+    return 0;
+}`,
+
+  warp_reduction: `// Parallel Reduction using Warp Shuffle Primitives (__shfl_down_sync)
+#include <cstdio>
+
+__inline__ __device__ float warpReduceSum(float val) {
+    for (int offset = 16; offset > 0; offset /= 2) {
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    }
+    return val;
+}
+
+__global__ void blockReduce(const float* in, float* out, int n) {
+    int tid = threadIdx.x;
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    float sum = (gid < n) ? in[gid] : 0.0f;
+
+    sum = warpReduceSum(sum);
+
+    if (tid == 0) {
+        out[blockIdx.x] = sum;
+    }
+}
+
+int main() {
+    int n = 32;
+    size_t bytes = n * sizeof(float);
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, bytes);
+    cudaMalloc(&d_out, sizeof(float));
+
+    float h_in[32];
+    for (int i = 0; i < n; i++) h_in[i] = 1.0f;
+
+    cudaMemcpy(d_in, h_in, bytes, cudaMemcpyHostToDevice);
+
+    blockReduce<<<1, 32>>>(d_in, d_out, n);
+    cudaDeviceSynchronize();
+
+    float h_out[1];
+    cudaMemcpy(h_out, d_out, sizeof(float), cudaMemcpyDeviceToHost);
+    printf("Warp reduction result = %f (Expected: 32.0)\\n", h_out[0]);
+
+    cudaFree(d_in);
+    cudaFree(d_out);
+    return 0;
+}`,
+
+  atomic_histogram: `// Atomic Operations and Contention Profiling
+#include <cstdio>
+
+__global__ void histogram(const int* data, int* bins, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        int bin = data[i] % 8; // 8 bins
+        atomicAdd(&bins[bin], 1);
+    }
+}
+
+int main() {
+    int n = 256;
+    int *d_data, *d_bins;
+    cudaMalloc(&d_data, n * sizeof(int));
+    cudaMalloc(&d_bins, 8 * sizeof(int));
+    cudaMemset(d_bins, 0, 8 * sizeof(int));
+
+    int h_data[256];
+    for (int i = 0; i < n; i++) h_data[i] = i;
+
+    cudaMemcpy(d_data, h_data, n * sizeof(int), cudaMemcpyHostToDevice);
+
+    histogram<<<4, 64>>>(d_data, d_bins, n);
+    cudaDeviceSynchronize();
+
+    int h_bins[8];
+    cudaMemcpy(h_bins, d_bins, 8 * sizeof(int), cudaMemcpyDeviceToHost);
+
+    printf("Atomic Histogram Results (256 items into 8 bins):\\n");
+    for (int b = 0; b < 8; b++) {
+        printf("  Bin %d: count = %d\\n", b, h_bins[b]);
+    }
+
+    cudaFree(d_data);
+    cudaFree(d_bins);
+    return 0;
+}`,
+
+  multi_gpu_nccl: `// Multi-GPU Ring AllReduce Simulation (Native NCCL Collective)
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <cstdio>
+
+int main() {
+    int numGpus = 4;
+    int count = 64;
+    size_t bytes = count * sizeof(float);
+
+    printf("Initializing Multi-GPU cluster with %d devices...\\n", numGpus);
+
+    ncclComm_t comms[4];
+    ncclCommInitAll(comms, numGpus);
+
+    float *d_send[4];
+    float *d_recv[4];
+    float h_send[64];
+    for (int i = 0; i < count; i++) h_send[i] = 1.0f;
+
+    // Allocate memory on each virtual GPU node and copy input shard
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        cudaMalloc(&d_send[r], bytes);
+        cudaMalloc(&d_recv[r], bytes);
+        cudaMemcpy(d_send[r], h_send, bytes, cudaMemcpyHostToDevice);
+    }
+
+    // Execute Native Ring AllReduce across all ranks
+    printf("Invoking ncclAllReduce(sum) across %d GPUs...\\n", numGpus);
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        ncclAllReduce(d_send[r], d_recv[r], count, ncclFloat, ncclSum, comms[r], 0);
+    }
+
+    // Verify reduction output on each device
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        float h_recv[64];
+        cudaMemcpy(h_recv, d_recv[r], bytes, cudaMemcpyDeviceToHost);
+        printf("GPU %d reduced element 0: %f (Expected: %f)\\n", r, h_recv[0], (float)numGpus);
+    }
+
+    return 0;
+}`,
+
+  inference_cluster: `// [EXPERIMENTAL - analytical model, not validated] Multi-GPU LLM Inference & Traffic Overload Simulation (vLLM / TensorRT-LLM architecture)
+#include <cstdio>
+
+int main() {
+    printf("============================================================\\n");
+    printf("  [EXPERIMENTAL - Analytical Model] LLM Inference Cluster\\n");
+    printf("  Model: LLaMA-3-70B (FP16, 80 layers, hidden_size=8192)\\n");
+    printf("  Cluster: 8x NVIDIA A100-SXM4-80GB (NVLink 600 GB/s, TP=8)\\n");
+    printf("============================================================\\n\\n");
+
+    // Initialize the Multi-GPU Inference Cluster
+    auto cluster = new window.CudaRuntime.InferenceCluster({
+        gpuModel: 'A100-SXM4-80GB',
+        gpuCount: 8,
+        tensorParallel: 8,
+        pipelineParallel: 1,
+        modelParamsB: 70
+    });
+
+    printf("Cluster Configuration:\\n");
+    printf("  Total GPUs: %d\\n", cluster.gpuCount);
+    printf("  VRAM per GPU: %d GB\\n", cluster.gpuVramGB);
+    printf("  Weights per GPU: %.2f GB (TP=8)\\n", cluster.weightPerGpuGB);
+    printf("  Available KV Cache per GPU: %.2f GB\\n", cluster.availableKvCacheGBPerGpu);
+    printf("  Max Concurrent Cluster Tokens: %d\\n\\n", cluster.maxConcurrentTokensCluster);
+
+    printf("--- Workload 1: Normal Production Traffic (40 RPS) ---\\n");
+    auto res1 = cluster.simulateTraffic({ targetRps: 40, durationSec: 5, burstMultiplier: 1.0 });
+    printf("  Requests Arrived: %d\\n", res1.trafficMetrics.totalArrivedRequests);
+    printf("  Requests Served: %d (Drop Rate: %.2f%%)\\n", res1.trafficMetrics.servedRequests, res1.trafficMetrics.dropRatePct);
+    printf("  Peak KV Saturation: %.1f%%\\n", res1.congestedLatency.peakKvSaturationPct);
+    printf("  Latency P50: %.1f ms | P95: %.1f ms | P99: %.1f ms\\n\\n", 
+           res1.congestedLatency.p50Ms, res1.congestedLatency.p95Ms, res1.congestedLatency.p99Ms);
+
+    printf("--- Workload 2: Overload Burst Spike (40 RPS x 4.5x Burst = 180 RPS) ---\\n");
+    auto res2 = cluster.simulateTraffic({ targetRps: 40, durationSec: 5, burstMultiplier: 4.5 });
+    printf("  Requests Arrived: %d\\n", res2.trafficMetrics.totalArrivedRequests);
+    printf("  Requests Served: %d (Throughput: %.1f tokens/sec)\\n", res2.trafficMetrics.servedRequests, res2.trafficMetrics.tokenThroughputTps);
+    printf("  Dropped Requests: %d (Drop Rate: %.2f%%)\\n", res2.trafficMetrics.droppedRequests, res2.trafficMetrics.dropRatePct);
+    printf("  Max Queue Depth: %d requests\\n", res2.congestedLatency.maxQueueDepth);
+    printf("  Peak KV Saturation: %.1f%%\\n", res2.congestedLatency.peakKvSaturationPct);
+    printf("  Latency P50: %.1f ms | P95: %.1f ms | P99: %.1f ms\\n", 
+           res2.congestedLatency.p50Ms, res2.congestedLatency.p95Ms, res2.congestedLatency.p99Ms);
+
+    return 0;
+}`,
+
+  custom: `// Write or paste supported CUDA C++ code here (see CUDA_COMPATIBILITY.md)
+#include <cstdio>
+
+__global__ void myKernel(float* data, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        data[idx] = data[idx] * 2.0f;
+    }
+}
+
+int main() {
+    int n = 128;
+    float *d_arr;
+    cudaMalloc(&d_arr, n * sizeof(float));
+
+    float h_arr[128];
+    for (int i = 0; i < n; i++) h_arr[i] = 5.0f;
+
+    cudaMemcpy(d_arr, h_arr, n * sizeof(float), cudaMemcpyHostToDevice);
+    myKernel<<<2, 64>>>(d_arr, n);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(h_arr, d_arr, n * sizeof(float), cudaMemcpyDeviceToHost);
+    printf("myKernel result: h_arr[0] = %f\\n", h_arr[0]);
+
+    cudaFree(d_arr);
+    return 0;
+}`
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Application State & Controller
+// ═══════════════════════════════════════════════════════════════════════════
+let editor = null;
+let currentProfile = 'A100';
+let clusterNodes = 1;
+
+// Format bytes
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+
+function updateSpecTable(prof) {
+  document.getElementById('spec-name').textContent = prof.name || currentProfile;
+  document.getElementById('spec-arch').textContent = prof.architecture || 'Ampere';
+  document.getElementById('spec-sm').textContent = 'sm_' + (prof.computeCapability || '80');
+  document.getElementById('spec-sm-count').textContent = prof.smCount || 108;
+  document.getElementById('spec-peak-tflops').textContent = (prof.fp32TFLOPS || prof.peakTFLOPS || 19.5).toFixed(1) + ' TFLOPS (FP32)';
+  const bw = prof.memoryBandwidthGBs || prof.memBandwidthGBs || 2039;
+  document.getElementById('spec-peak-bw').textContent = bw + ' GB/s';
+  document.getElementById('spec-shared-max').textContent = formatBytes(prof.maxSharedMemPerBlock || (prof.sharedMemoryPerBlockKB ? prof.sharedMemoryPerBlockKB * 1024 : 49152));
+  document.getElementById('spec-interconnect').textContent = prof.interconnect || (prof.nvlinkBandwidthGBs ? 'NVLink (' + prof.nvlinkBandwidthGBs + ' GB/s)' : 'PCIe Gen' + (prof.pcieGen || 4) + ' (' + (prof.pcieBandwidthGBs || 15.75) + ' GB/s)');
+
+  document.getElementById('m-bandwidth-spec').textContent = 'Peak: ' + bw + ' GB/s';
+  document.getElementById('status-gpu-label').textContent = prof.name || currentProfile;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Monaco Editor Initialization
+// ═══════════════════════════════════════════════════════════════════════════
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+require(['vs/editor/editor.main'], function () {
+  editor = monaco.editor.create(document.getElementById('editor'), {
+    value: PRESETS.vector_add,
+    language: 'cpp',
+    theme: 'vs-dark',
+    automaticLayout: true,
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+    minimap: { enabled: false },
+    lineNumbers: 'on',
+    scrollBeyondLastLine: false,
+    tabSize: 4,
+  });
+
+  // Shortcut: Ctrl+Enter or Cmd+Enter to Run
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function () {
+    executeSimulation();
+  });
+
+  // Initial spec load
+  if (window.GPU_PROFILES) {
+    const prof = window.GPU_PROFILES.getProfile(currentProfile);
+    updateSpecTable(prof);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI Event Handlers
+// ═══════════════════════════════════════════════════════════════════════════
+// Preset change
+document.getElementById('preset-select').addEventListener('change', function (e) {
+  const key = e.target.value;
+  if (PRESETS[key] && editor) {
+    editor.setValue(PRESETS[key]);
+  }
+});
+
+// GPU Profile change
+document.getElementById('gpu-select').addEventListener('change', function (e) {
+  currentProfile = e.target.value;
+  if (window.GPU_PROFILES) {
+    const prof = window.GPU_PROFILES.getProfile(currentProfile);
+    updateSpecTable(prof);
+  }
+});
+
+// Cluster selector
+document.getElementById('cluster-select').addEventListener('change', function (e) {
+  clusterNodes = parseInt(e.target.value, 10);
+  document.getElementById('mgpu-count').textContent = clusterNodes;
+});
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    btn.classList.add('active');
+    const tabId = btn.getAttribute('data-tab');
+    document.getElementById(tabId).classList.add('active');
+  });
+});
+
+// Clear console
+document.getElementById('btn-clear').addEventListener('click', function () {
+  document.getElementById('console-output').textContent = '// Console cleared.';
+  document.getElementById('transpiled-output').textContent = '// Transpiled JavaScript cleared.';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Simulation Execution Engine
+// ═══════════════════════════════════════════════════════════════════════════
+document.getElementById('btn-run').addEventListener('click', executeSimulation);
+
+function executeSimulation() {
+  if (!editor) return;
+  const cudaCode = editor.getValue();
+  const consoleOut = document.getElementById('console-output');
+  const transpiledOut = document.getElementById('transpiled-output');
+
+  consoleOut.innerHTML = '<span class="log-info">[1/3] Transpiling CUDA C++ source...</span>\n';
+
+  // Step 1: Transpile CUDA C++ to JavaScript
+  let transpileRes;
+  try {
+    transpileRes = window.CudaTranspiler.transpile(cudaCode);
+  } catch (err) {
+    consoleOut.innerHTML += `<span class="log-error">Transpilation Exception: ${err.message}</span>\n`;
+    return;
+  }
+
+  if (!transpileRes.success) {
+    consoleOut.innerHTML += `<span class="log-error">Transpilation Failed:\n${transpileRes.errors.join('\n')}</span>\n`;
+    return;
+  }
+
+  transpiledOut.textContent = transpileRes.code;
+  consoleOut.innerHTML += `<span class="log-success">[2/3] Transpilation successful! Extracted kernels: [${transpileRes.kernelNames.join(', ') || 'none'}]</span>\n`;
+  consoleOut.innerHTML += `<span class="log-info">[3/3] Initializing virtual ${currentProfile} runtime (${clusterNodes} nodes)...</span>\n`;
+
+  // Step 2: Initialize Virtual Runtime
+  const prof = window.GPU_PROFILES.getProfile(currentProfile);
+  const runtime = new window.CudaRuntime(prof);
+
+  runtime.deviceCount = clusterNodes;
+  runtime.clusterSelectCount = clusterNodes;
+  window.clusterNodes = clusterNodes;
+  if (clusterNodes > 1) {
+    runtime.initMultiGPU(clusterNodes);
+  }
+
+  // Intercept printf diagnostics
+  const outputLogs = [];
+
+  // Step 3: Execute Transpiled Code
+  try {
+    const startTime = performance.now();
+    const runner = new Function('__rt', transpileRes.code);
+    runner(runtime);
+    const hostDuration = (performance.now() - startTime).toFixed(2);
+
+    consoleOut.innerHTML += `\n<span class="log-success">=== EXECUTION COMPLETED (${hostDuration} ms) ===</span>\n`;
+
+    // Fetch kernel/host diagnostics
+    const diagnostics = runtime.getDiagnostics();
+    if (diagnostics.length > 0) {
+      consoleOut.innerHTML += '\n<strong>Standard Output (printf):</strong>\n';
+      for (const d of diagnostics) {
+        if (d.type === 'printf') {
+          consoleOut.innerHTML += `<span style="color:#e2e8f0">${escapeHtml(d.message)}</span>`;
+        } else if (d.type === 'error') {
+          consoleOut.innerHTML += `<span class="log-error">[Device Error Block (${d.block.x},${d.block.y},${d.block.z}) Thread (${d.thread.x},${d.thread.y},${d.thread.z})]: ${escapeHtml(d.message)}</span>\n`;
+        }
+      }
+    } else {
+      consoleOut.innerHTML += '\n<span style="color:var(--muted)">[No printf output emitted by kernel/host code]</span>\n';
+    }
+
+    // Step 4: Update Metrics & Counters
+    updateMetrics(runtime.getCounters(), prof);
+
+  } catch (runErr) {
+    consoleOut.innerHTML += `\n<span class="log-error">Runtime Simulation Error: ${runErr.message}\n${runErr.stack}</span>\n`;
+  }
+}
+
+function updateMetrics(counters, prof) {
+  const c = counters.toJSON();
+
+  // Metric cards
+  document.getElementById('m-time').textContent = c.estimatedTimeMs < 1 
+    ? (c.estimatedTimeMs * 1000).toFixed(1) + ' µs'
+    : c.estimatedTimeMs.toFixed(3) + ' ms';
+  document.getElementById('m-cycles').textContent = c.estimatedCycles.toLocaleString() + ' cycles';
+
+  document.getElementById('m-compute-util').textContent = (c.computeUtilization * 100).toFixed(2) + '%';
+  document.getElementById('m-flops').textContent = c.flopCount.toLocaleString() + ' FLOPs';
+
+  document.getElementById('m-mem-util').textContent = (c.memoryUtilization * 100).toFixed(2) + '%';
+
+  document.getElementById('m-occupancy').textContent = (c.occupancy * 100).toFixed(2) + '%';
+  document.getElementById('m-threads-blocks').textContent = `${c.threadsLaunched} threads / ${c.blocksLaunched} blocks`;
+
+  // Memory tab
+  document.getElementById('cnt-g-loads').textContent = c.globalLoads.toLocaleString();
+  document.getElementById('cnt-g-stores').textContent = c.globalStores.toLocaleString();
+  document.getElementById('cnt-g-load-bytes').textContent = formatBytes(c.globalLoadBytes);
+  document.getElementById('cnt-g-store-bytes').textContent = formatBytes(c.globalStoreBytes);
+  document.getElementById('cnt-g-transactions').textContent = c.globalTransactions.toLocaleString();
+
+  document.getElementById('cnt-s-loads').textContent = c.sharedLoads.toLocaleString();
+  document.getElementById('cnt-s-stores').textContent = c.sharedStores.toLocaleString();
+  document.getElementById('cnt-s-bytes').textContent = formatBytes(c.sharedLoadBytes + c.sharedStoreBytes);
+
+  const conflictBadge = document.getElementById('cnt-s-conflicts');
+  if (c.bankConflicts > 0) {
+    conflictBadge.className = 'badge-warn';
+    conflictBadge.textContent = c.bankConflicts + ' conflicts';
+  } else {
+    conflictBadge.className = 'badge-highlight';
+    conflictBadge.textContent = '0 conflicts';
+  }
+
+  // Warp & Atomics
+  document.getElementById('cnt-sync-count').textContent = c.syncthreadsCount.toLocaleString();
+  document.getElementById('cnt-divergence').textContent = c.divergentBranches.toLocaleString();
+  document.getElementById('cnt-atomic-ops').textContent = c.atomicOps.toLocaleString();
+  document.getElementById('cnt-atomic-contention').textContent = c.atomicMaxContention;
+
+  // Multi-GPU tab
+  document.getElementById('mgpu-traffic').textContent = formatBytes(c.crossGpuBytes);
+  document.getElementById('mgpu-nccl-ops').textContent = c.ncclOps.toLocaleString();
+  document.getElementById('mgpu-peer-bytes').textContent = formatBytes(c.crossGpuBytes);
+  document.getElementById('mgpu-h2d-bytes').textContent = formatBytes(c.memcpyH2DBytes);
+  document.getElementById('mgpu-d2h-bytes').textContent = formatBytes(c.memcpyD2HBytes);
+
+  // Render per-device nodes if cluster > 1
+  const nodesContainer = document.getElementById('mgpu-nodes-container');
+  if (clusterNodes > 1) {
+    let html = '';
+    for (let r = 0; r < clusterNodes; r++) {
+      const devC = (c.perDevice && c.perDevice[r]) ? c.perDevice[r] : null;
+      const devTraffic = devC ? devC.crossGpuBytes : Math.floor(c.crossGpuBytes / clusterNodes);
+      const devLoads = devC ? devC.globalLoads : 0;
+      const devStores = devC ? devC.globalStores : 0;
+      html += `
+        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:12px;">Node #${r}: ${prof.name}</div>
+            <div style="font-size:10px; color:var(--muted)">Device Rank ${r} / ${clusterNodes} &bull; ${devLoads} loads, ${devStores} stores</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:var(--mono); font-weight:700; color:var(--green); font-size:12px;">ONLINE</div>
+            <div style="font-size:10px; color:var(--muted)">Traffic: ${formatBytes(devTraffic)}</div>
+          </div>
+        </div>
+      `;
+    }
+    nodesContainer.innerHTML = html;
+  } else {
+    nodesContainer.innerHTML = '<div style="font-size:12px; color:var(--muted)">Run with Cluster Nodes &gt; 1 to see individual node topographies.</div>';
+  }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>

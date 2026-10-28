@@ -1,0 +1,176 @@
+{
+  "timestamp": "2026-10-28T10:43:38.394Z",
+  "totalKernels": 21,
+  "passed": 21,
+  "failed": 0,
+  "results": [
+    {
+      "kernel": "vector_add.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 45,
+      "notes": "Bit-exact vector addition"
+    },
+    {
+      "kernel": "matrix_mul.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 27,
+      "notes": "16x16 tiled matrix multiply"
+    },
+    {
+      "kernel": "reduce_sum.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 4,
+      "notes": "Sum 1..64 = 2080"
+    },
+    {
+      "kernel": "matrix_transpose.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 9,
+      "notes": "16x16 shared transpose"
+    },
+    {
+      "kernel": "dot_product.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 4,
+      "notes": "Dot product sum = 192"
+    },
+    {
+      "kernel": "saxpy.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 3,
+      "notes": "SAXPY a*x + y"
+    },
+    {
+      "kernel": "histogram256.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 4,
+      "notes": "256-bin atomic histogram"
+    },
+    {
+      "kernel": "conv1d.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 4,
+      "notes": "1D convolution filter"
+    },
+    {
+      "kernel": "relu.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 1,
+      "notes": "Elementwise ReLU"
+    },
+    {
+      "kernel": "scalar_mul.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 1,
+      "notes": "In-place scalar scale"
+    },
+    {
+      "kernel": "prefix_sum.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 2,
+      "notes": "Hillis-Steele prefix scan"
+    },
+    {
+      "kernel": "warp_shuffle_reduce.cu",
+      "category": "Algorithmic",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 2,
+      "notes": "32-thread warp shuffle sum = 32.0"
+    },
+    {
+      "kernel": "layernorm_forward.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 9,
+      "notes": "llm.c layernorm forward mean=2.0"
+    },
+    {
+      "kernel": "gelu_forward.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 3,
+      "notes": "llm.c GELU activation"
+    },
+    {
+      "kernel": "softmax_forward.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 5,
+      "notes": "llm.c stable softmax sum=1.0"
+    },
+    {
+      "kernel": "residual_add.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 2,
+      "notes": "llm.c residual addition 1.5+2.5=4.0"
+    },
+    {
+      "kernel": "embedding_forward.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 3,
+      "notes": "llm.c token embedding forward lookup"
+    },
+    {
+      "kernel": "cross_entropy_forward.cu",
+      "category": "LLM Kernel",
+      "status": "PASS",
+      "verdict": "PASS",
+      "durationMs": 3,
+      "notes": "llm.c cross-entropy loss = 0.3567"
+    },
+    {
+      "kernel": "dynamic_parallelism.cu",
+      "category": "Unsupported Feature",
+      "status": "PASS",
+      "verdict": "PASS (Rejected)",
+      "durationMs": 0,
+      "notes": "Rejected: Dynamic Parallelism (nested kernel launch)"
+    },
+    {
+      "kernel": "inline_ptx.cu",
+      "category": "Unsupported Feature",
+      "status": "PASS",
+      "verdict": "PASS (Rejected)",
+      "durationMs": 0,
+      "notes": "Rejected: Inline PTX assembly (__asm__)"
+    },
+    {
+      "kernel": "wmma_tensor_core.cu",
+      "category": "Unsupported Feature",
+      "status": "PASS",
+      "verdict": "PASS (Rejected)",
+      "durationMs": 0,
+      "notes": "Rejected: Tensor Core WMMA API (nvcuda::wmma)"
+    }
+  ]
+}

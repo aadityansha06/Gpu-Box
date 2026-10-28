@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gpubox - Minimal 16-GPU UI</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 24px; }
+    h1 { font-size: 1.4rem; color: #38bdf8; margin-bottom: 12px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; background: #1e293b; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+    th { background: #334155; color: #94a3b8; font-weight: 600; }
+    .matrix-grid { display: grid; grid-template-columns: repeat(16, 28px); gap: 2px; }
+    .cell { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border-radius: 2px; }
+    .traffic-active { background: #0284c7; color: #fff; font-weight: bold; }
+    .traffic-zero { background: #1e293b; color: #475569; }
+    button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Gpubox 16-GPU Cluster Minimal UI</h1>
+  <button id="runBtn" onclick="runClusterSimulation()">Run 16-Rank AllReduce</button>
+  <div id="status" style="margin: 12px 0; color: #38bdf8;">Ready</div>
+
+  <h3>Cluster Nodes (16 Virtual GPUs)</h3>
+  <table id="gpuTable">
+    <thead>
+      <tr><th>GPU ID</th><th>Architecture</th><th>Allocated VRAM</th><th>Ring Traffic (Bytes)</th><th>NCCL Ops</th><th>Status</th></tr>
+    </thead>
+    <tbody id="gpuTbody"></tbody>
+  </table>
+
+  <h3>Traffic Heatmap (16 x 16 Ring Matrix)</h3>
+  <div id="trafficMatrix" class="matrix-grid"></div>
+
+  <script src="../../js/dist/cuda-sim.min.js"></script>
+  <script src="./minimal-ui.js"></script>
+</body>
+</html>

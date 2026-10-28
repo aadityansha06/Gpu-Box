@@ -1,0 +1,54 @@
+{
+  "name": "gpubox",
+  "version": "1.0.0",
+  "description": "Browser-based CUDA and multi-GPU simulation and pre-validation library. Validate supported CUDA logic, memory hazards, and 1–16 GPU cluster algorithms before paying for hardware.",
+  "main": "dist/cuda-sim.cjs.js",
+  "module": "dist/cuda-sim.esm.js",
+  "browser": "dist/cuda-sim.min.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist/",
+    "public/"
+  ],
+  "scripts": {
+    "build:wasm": "node -e \"console.log('Using compiled WASM artifacts in public/')\"",
+    "build:js": "rollup -c rollup.config.js",
+    "build": "npm run build:js",
+    "test": "node ../scripts/run-all-tests.js",
+    "test:benchmarks": "node ../scripts/run-validation-benchmarks.js",
+    "test:metrics": "node ../scripts/test-metrics-regression.js",
+    "test:negative": "node ../scripts/test-negative.js",
+    "test:numerical": "node ../scripts/test-numerical-references.js",
+    "test:real-gpu": "python ../scripts/test-real-gpu.py",
+    "dev": "rollup -c rollup.config.js --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "gpubox",
+    "cuda",
+    "gpu",
+    "wasm",
+    "webassembly",
+    "simulator",
+    "parallel-computing",
+    "multi-gpu",
+    "nccl"
+  ],
+  "author": "Aadityansha Verma",
+  "license": "Commercial",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aadityansha/gpubox.git"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/node": "^20.0.0",
+    "rollup": "^4.0.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.0.0"
+  }
+}

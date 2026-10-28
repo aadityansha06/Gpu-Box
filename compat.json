@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0.0",
+  "name": "gpubox",
+  "engineVersion": "1.0.0",
+  "updatedAt": "2026-10-28",
+  "engines": {
+    "js": {
+      "name": "JavaScript SIMT Transpiler & Virtual Cluster Engine",
+      "status": "stable",
+      "supportsSourceCompilation": true,
+      "maxClusterDevices": 16,
+      "features": {
+        "kernelLaunch": { "supported": true, "notes": "Arbitrary gridDim and blockDim (up to 1024 threads/block)" },
+        "sharedMemory": { "supported": true, "notes": "Static and dynamic __shared__ memory with bank conflict detection" },
+        "syncthreads": { "supported": true, "notes": "Full barrier synchronization with barrier divergence checking" },
+        "atomics": { "supported": true, "notes": "atomicAdd, atomicSub, atomicMax, atomicMin, atomicCAS, atomicExch, atomicAnd, atomicOr, atomicXor" },
+        "warpShuffles": { "supported": true, "notes": "__shfl_down_sync, __shfl_up_sync, __shfl_xor_sync, __shfl_sync, __ballot_sync" },
+        "fp16_bf16": { "supported": true, "notes": "IEEE binary16 and bfloat16 round-to-nearest-even arithmetic and conversions" },
+        "raceDetector": { "supported": true, "notes": "Barrier-epoch tracking for shared memory RAW, WAR, WAW hazards" },
+        "desyncDetector": { "supported": true, "notes": "Multi-GPU deadlock, parameter mismatch, and order mismatch detection" },
+        "sparseVRAM": { "supported": true, "notes": "Sparse page allocator up to 80 GiB per device across 16 GPUs" },
+        "multiGpuCollectives": { "supported": true, "notes": "ncclAllReduce, ncclBroadcast, ncclReduceScatter, ncclAllGather, ncclReduce, ncclAllToAll, ncclSend, ncclRecv, sub-communicators" },
+        "printf": { "supported": true, "notes": "CUDA printf formatting with per-thread context" },
+        "dynamicParallelism": { "supported": false, "reason": "Nested kernel launches inside GPU device code are not supported in client-side environment" },
+        "inlinePtx": { "supported": false, "reason": "Inline PTX assembly (__asm__) requires physical NVIDIA SASS assembler and is rejected" },
+        "wmmaTensorCores": { "supported": false, "reason": "WMMA tensor core intrinsics (nvcuda::wmma) require hardware tensor cores and are rejected" },
+        "cudaGraphs": { "supported": false, "reason": "CUDA Graph execution graph capture (cudaGraphCreate) is not supported" }
+      }
+    },
+    "wasm": {
+      "name": "WebAssembly C++ Analytical & Collective Engine",
+      "status": "stable",
+      "supportsSourceCompilation": false,
+      "maxClusterDevices": 16,
+      "features": {
+        "kernelLaunch": { "supported": true, "notes": "Runs compiled analytical kernel models" },
+        "sharedMemory": { "supported": true, "notes": "Modeled shared memory latency and banks" },
+        "syncthreads": { "supported": true, "notes": "Analytical barrier synchronization" },
+        "atomics": { "supported": true, "notes": "Atomic transaction modeling" },
+        "warpShuffles": { "supported": true, "notes": "Analytical warp shuffle execution" },
+        "fp16_bf16": { "supported": true, "notes": "Bit-exact half and bfloat16 math" },
+        "raceDetector": { "supported": true, "notes": "Shared memory hazard validation" },
+        "desyncDetector": { "supported": true, "notes": "Multi-GPU collective staging and deadlock verification" },
+        "sparseVRAM": { "supported": true, "notes": "Virtual VRAM modeling" },
+        "multiGpuCollectives": { "supported": true, "notes": "Full NCCL collective suite across 1-16 ranks" },
+        "printf": { "supported": true, "notes": "Host stdout capture" },
+        "dynamicParallelism": { "supported": false, "reason": "Dynamic parallelism requires hardware runtime scheduler" },
+        "inlinePtx": { "supported": false, "reason": "Inline PTX assembly requires hardware PTX JIT driver" },
+        "wmmaTensorCores": { "supported": false, "reason": "WMMA tensor core intrinsics require physical hardware" },
+        "cudaGraphs": { "supported": false, "reason": "CUDA Graph API is not supported in simulator core" }
+      }
+    }
+  }
+}

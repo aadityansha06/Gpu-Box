@@ -1,0 +1,80 @@
+{
+  "timestamp": "2026-10-28T10:43:39.413Z",
+  "totalTests": 12,
+  "passedTests": 12,
+  "failedTests": 0,
+  "results": [
+    {
+      "id": "A1",
+      "name": "16-rank AllReduce (SUM, MAX, MIN, AVG, PROD, 7680 bytes/rank ring traffic)",
+      "status": "PASS",
+      "durationMs": 116
+    },
+    {
+      "id": "A2",
+      "name": "16-rank Broadcast (root=11, 400 bytes per non-root, invalid root rejected)",
+      "status": "PASS",
+      "durationMs": 3
+    },
+    {
+      "id": "A3",
+      "name": "16-rank AllGather (180 bytes/rank) & ReduceScatter (120 bytes/rank)",
+      "status": "PASS",
+      "durationMs": 3
+    },
+    {
+      "id": "A4",
+      "name": "16-rank Desync & Deadlock Detection (missing rank, count mismatch, order mismatch, reset)",
+      "status": "PASS",
+      "durationMs": 1
+    },
+    {
+      "id": "A5",
+      "name": "16-rank Send/Recv Ring Shift & AllToAll (60 bytes/rank)",
+      "status": "PASS",
+      "durationMs": 2
+    },
+    {
+      "id": "A6",
+      "name": "Sub-communicators (devices 0-7 sum=36, devices 8-15 sum=100, 448 bytes/rank, 0 inter-group traffic)",
+      "status": "PASS",
+      "durationMs": 2
+    },
+    {
+      "id": "A7",
+      "name": "Virtual VRAM (16 devices x 70 GiB succeeds, <256 MB real heap growth, 2nd 70 GiB fails, 81 GiB fails)",
+      "status": "PASS",
+      "durationMs": 3
+    },
+    {
+      "id": "A8",
+      "name": "Watchdog runaway loop abort (aborts while(true){} naming kernel, block, thread)",
+      "status": "PASS",
+      "durationMs": 734
+    },
+    {
+      "id": "A9",
+      "name": "Determinism & State (bit-identical Math.fround reduction, aggregate counters sum, clean reset)",
+      "status": "PASS",
+      "durationMs": 3
+    },
+    {
+      "id": "A10",
+      "name": "Configuration matrix (6 GPU profiles x 1..16 GPUs = 96 configurations in < 60s)",
+      "status": "PASS",
+      "durationMs": 14
+    },
+    {
+      "id": "A11",
+      "name": "Validation verdicts (PASS, FAIL with mismatch details, UNSUPPORTED, tolerance boundaries)",
+      "status": "PASS",
+      "durationMs": 2
+    },
+    {
+      "id": "A12",
+      "name": "Spec consistency (A100 80GB peak mem bandwidth = 2039 GB/s, profile registry matches docs)",
+      "status": "PASS",
+      "durationMs": 0
+    }
+  ]
+}
