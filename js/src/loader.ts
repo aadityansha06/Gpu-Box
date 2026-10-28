@@ -33,7 +33,7 @@ export async function loadWasm(wasmUrl?: string): Promise<CudaSimWasmModule> {
     const scriptUrl = wasmUrl
       ?? (typeof __CUDA_SIM_WASM_URL__ !== 'undefined'
           ? (__CUDA_SIM_WASM_URL__ as string)
-          : 'https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/public/cuda_sim.js');
+          : 'https://cdn.jsdelivr.net/npm/gpubox@latest/public/cuda_sim.js');
 
     // Dynamically load the Emscripten JS glue
     if (typeof document !== 'undefined') {

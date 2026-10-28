@@ -1,8 +1,8 @@
-# Verification & Strengthening Report: `@trentorch/cuda-sim`
+# Verification & Strengthening Report: `gpubox`
 
 **Audit & Verification Date:** October 28, 2026  
 **Evaluation:** Automated verification run  
-**Repository:** `@trentorch/cuda-sim` (v0.1.0)  
+**Repository:** `gpubox` (v1.0.0)  
 **Execution Environment:** Node.js v26.8.1, Windows 11 x64, NVIDIA GeForce RTX 4050 Laptop GPU (Driver 617.42, CUDA Driver API 13.4, NVRTC 12.9)
 
 ---

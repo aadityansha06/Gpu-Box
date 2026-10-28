@@ -27,9 +27,9 @@
 
   let pkgTab = 'npm';
   const installCommands = {
-    npm: 'npm install @trentorch/gpubox',
-    pnpm: 'pnpm add @trentorch/gpubox',
-    cdn: '<script src="https://cdn.jsdelivr.net/npm/@trentorch/gpubox@1.0.0/dist/gpubox.min.js"><' + '/script>'
+    npm: 'npm install gpubox',
+    pnpm: 'pnpm add gpubox',
+    cdn: '<script src="https://cdn.jsdelivr.net/npm/gpubox@1.0.0/dist/gpubox.min.js"><' + '/script>'
   };
   let copiedInstall = false;
 

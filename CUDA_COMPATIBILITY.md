@@ -1,6 +1,6 @@
 # CUDA Simulator Compatibility Report & Specification
 
-**Package:** `@trentorch/cuda-sim` (v0.1.0)  
+**Package:** `gpubox` (v1.0.0)  
 **Specification Version:** 1.2 (Post-Verification Audit)  
 **Date:** October 28, 2026
 
@@ -8,7 +8,7 @@
 
 ## 1. Compatibility Overview
 
-This document provides a feature-by-feature evaluation of supported, limited, and unsupported CUDA APIs in `@trentorch/cuda-sim`. 
+This document provides a feature-by-feature evaluation of supported, limited, and unsupported CUDA APIs in `gpubox`. 
 
 ### Compatibility Classification Legend
 - **SUPPORTED & TESTED (ST):** Full semantic simulation supported; verified by automated tests in this repository.

@@ -1,6 +1,6 @@
 # CUDA Simulator Benchmark & Validation Report
 
-**Package:** `@trentorch/cuda-sim` (v0.1.0)  
+**Package:** `gpubox` (v1.0.0)  
 **Evaluation Date:** October 28, 2026  
 **Evaluation:** Automated verification run  
 **Environment:** Node.js v26.8.1, Windows 11 x64, NVIDIA GeForce RTX 4050 Laptop GPU (Driver 617.42, CUDA UMD 13.4, NVRTC 12.9)

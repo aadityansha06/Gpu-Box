@@ -1,6 +1,6 @@
 # GPU Simulator Architecture & Enterprise Commercialization Guide
 
-> **Product**: `@trentorch/cuda-sim`  
+> **Product**: `gpubox`  
 > **Target Audience**: EdTech Platforms, Online CUDA Playgrounds, Universities, Cloud AI Platforms, and Interactive Documentation.  
 > **Core Value**: Client-side, browser-native, cycle-approximate NVIDIA CUDA GPU & Multi-GPU cluster simulation with **zero backend server costs** and **instant global delivery** via WebAssembly (WASM) & jsDelivr CDN.
 
@@ -10,10 +10,10 @@
 
 Traditional GPU education and interactive CUDA playgrounds suffer from a severe commercial bottleneck: **cost and infrastructure complexity**. Providing each student or platform user with dedicated physical or cloud GPU instances incurs substantial recurring infrastructure expenses, requires complicated container orchestration, and exposes infrastructure to security risks from untrusted C++ execution.
 
-`@trentorch/cuda-sim` addresses this challenge by providing a **client-side CUDA simulation and pre-validation environment** that runs inside the user's web browser:
+`gpubox` addresses this challenge by providing a **client-side CUDA simulation and pre-validation environment** that runs inside the user's web browser:
 
 1. **Client-Side Scalability**: Users execute simulations locally in browser WebAssembly/JavaScript, eliminating cloud GPU server costs during early development.
-2. **Instant Edge Delivery**: Shipped via npm package `@trentorch/cuda-sim` and CDN with zero installation.
+2. **Instant Edge Delivery**: Shipped via npm package `gpubox` and CDN with zero installation.
 3. **Supported CUDA Pattern Pre-Validation**: Validates supported parallel computing algorithms (Tiled Matrix Multiplication, Warp Reductions, Softmax, FlashAttention-style online softmax, Multi-GPU NCCL AllReduce).
 4. **Modeled SIMT Execution**: Models 32-thread warps, branch divergence, 32-bank shared memory conflicts, memory coalescing, and simulated hardware configuration profiles (A100, H100, RTX 4090, RTX 5060 Ti).
 5. **Virtual Multi-GPU Modeling**: Models multi-GPU clusters (up to 16 virtual nodes) with simulated interconnect transfers, ring-based NCCL collectives, and virtual queuing/batching metrics.
@@ -22,7 +22,7 @@ Traditional GPU education and interactive CUDA playgrounds suffer from a severe 
 
 ## 2. Dual-Engine Architecture
 
-To provide versatility for commercial and educational platforms, `@trentorch/cuda-sim` implements a dual-engine architecture:
+To provide versatility for commercial and educational platforms, `gpubox` implements a dual-engine architecture:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -111,7 +111,7 @@ The simulator provides architectural hardware configuration models based on offi
 
 ## 4. Multi-GPU Cluster & NCCL Collective Engine
 
-Distributed deep learning depends on multi-GPU coordination. `@trentorch/cuda-sim` includes a full multi-GPU runtime that models:
+Distributed deep learning depends on multi-GPU coordination. `gpubox` includes a full multi-GPU runtime that models:
 
 - **Cluster Topologies**: 1, 2, 4, 8, or 16 virtual GPUs with isolated memory heaps.
 - **Peer-to-Peer Access**: `cudaMemcpyPeer` with interconnect bandwidth throttling.
@@ -153,7 +153,7 @@ Commercial platforms can test and demonstrate how an LLM cluster responds to **t
 
 ## 6. GPU Metrics Instrumentation & Memory Hierarchy Modeling
 
-To guarantee academic accuracy and enterprise-grade code profiling, `@trentorch/cuda-sim` implements an end-to-end cycle and transaction accounting engine across all execution paths.
+To guarantee academic accuracy and enterprise-grade code profiling, `gpubox` implements an end-to-end cycle and transaction accounting engine across all execution paths.
 
 ### 6.1 SIMT Memory Coalescing & 32-Byte Sector Model
 Physical NVIDIA architectures (Ampere, Hopper, Ada, Blackwell) process global memory through 32-byte memory transaction sectors. Threads within a 32-lane warp issue memory requests concurrently:
@@ -225,7 +225,7 @@ Output artifacts:
 
 ### 6.2 NPM Package Build
 
-The JavaScript package `@trentorch/cuda-sim` wraps the WASM binary and JS SIMT engines:
+The JavaScript package `gpubox` wraps the WASM binary and JS SIMT engines:
 
 ```bash
 cd js
@@ -239,7 +239,7 @@ This compiles TypeScript definitions (`dist/types/`), generates Rollup bundles (
 
 ## 7. Commercial Platform Delivery Guide (jsDelivr / NPM)
 
-Other platforms can integrate `@trentorch/cuda-sim` with a single script tag or standard npm import.
+Other platforms can integrate `gpubox` with a single script tag or standard npm import.
 
 ### 7.1 Option A: Delivery via Global jsDelivr CDN (Zero Setup)
 
@@ -251,9 +251,9 @@ Other platforms can integrate `@trentorch/cuda-sim` with a single script tag or 
   <!-- Load Monaco Editor -->
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <!-- Load CUDA Simulator directly from jsDelivr CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/gpu-profiles.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/cuda-runtime.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/cuda-transpiler.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gpubox@latest/dist/gpu-profiles.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-runtime.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-transpiler.js"></script>
 </head>
 <body>
   <div id="editor" style="width:800px; height:400px;"></div>
@@ -297,7 +297,7 @@ Other platforms can integrate `@trentorch/cuda-sim` with a single script tag or 
 ### 7.2 Option B: Modern ES Module / React / Vue / Next.js Integration
 
 ```typescript
-import { CudaRuntime, CudaTranspiler, GPU_PROFILES } from '@trentorch/cuda-sim';
+import { CudaRuntime, CudaTranspiler, GPU_PROFILES } from 'gpubox';
 
 export function runKernelBenchmark(cudaCode: string) {
   const profile = GPU_PROFILES.getProfile('H100');
@@ -321,9 +321,9 @@ For enterprise platforms hosting coding competitions or automated test suites, r
 
 ```javascript
 // worker.js
-importScripts('https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/cuda-runtime.js');
-importScripts('https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/cuda-transpiler.js');
-importScripts('https://cdn.jsdelivr.net/npm/@trentorch/cuda-sim@latest/dist/gpu-profiles.js');
+importScripts('https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-runtime.js');
+importScripts('https://cdn.jsdelivr.net/npm/gpubox@latest/dist/cuda-transpiler.js');
+importScripts('https://cdn.jsdelivr.net/npm/gpubox@latest/dist/gpu-profiles.js');
 
 self.onmessage = function(e) {
   const { code, gpuModel } = e.data;
@@ -350,7 +350,7 @@ self.onmessage = function(e) {
 
 ## 8. Supported Production CUDA Features
 
-`@trentorch/cuda-sim` handles raw, production-level CUDA C++ idioms:
+`gpubox` handles raw, production-level CUDA C++ idioms:
 
 1. **Launch Configuration & Grids**: 1D, 2D, and 3D `dim3(x, y, z)` block and grid configurations with `blockIdx`, `threadIdx`, `blockDim`, and `gridDim`.
 2. **Shared Memory**:

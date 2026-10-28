@@ -1,6 +1,6 @@
 # Business Strategy & Product Vision: `cuda-sim`
 
-**Product Name:** `cuda-sim` (`@trentorch/cuda-sim`)  
+**Product Name:** `gpubox` (`gpubox`)  
 **Product Positioning:** *A browser-based pre-validation environment that helps developers catch supported CUDA logic errors and test multi-GPU algorithms before paying for hardware.*  
 **Working Principle:** **Validate early. Catch errors sooner. Spend GPU resources where real hardware is necessary.**
 
@@ -150,7 +150,7 @@ To maintain credibility with engineering leaders and enterprise buyers, product 
 ## 7. Business & Commercialization Strategy
 
 ### Phase 1: Open Source & Developer Adoption (Current)
-* Distribute `@trentorch/cuda-sim` as a free, open-source npm package and standalone browser playground.
+* Distribute `gpubox` as a free npm package and standalone browser playground.
 * Establish developer trust through transparent benchmarking, rigorous regression suites (136 automated tests), and documented real-GPU correlation on physical NVIDIA hardware (RTX 4050).
 * Gather user feedback from AI developers, students, and open-source contributors.
 

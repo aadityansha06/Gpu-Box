@@ -109,7 +109,7 @@ cuda-sim/
 │   │   └── cuda_sim.h    ← Full CUDA API shim header
 │   ├── src/              ← Runtime, scheduler, counters, detectors, multi-GPU
 │   └── build-wasm/       ← Compiled cuda_sim.wasm (192 KB) & cuda_sim.js
-├── js/                   ← NPM package (@trentorch/cuda-sim)
+├── js/                   ← NPM package (gpubox)
 │   ├── dist/             ← Bundled ESM, CJS, UMD, and types
 │   ├── public/           ← Static WASM assets
 │   └── src/              ← TypeScript API wrapper

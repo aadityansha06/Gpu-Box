@@ -18,7 +18,7 @@ const rootDir = path.resolve(__dirname, '..');
 const startTime = Date.now();
 
 console.log('================================================================');
-console.log('  @trentorch/cuda-sim — UNIFIED AUTOMATED TEST SUITE');
+console.log('  gpubox — UNIFIED AUTOMATED TEST SUITE');
 console.log('  Platform: ' + process.platform + ' ' + process.arch + ' | Node ' + process.version);
 console.log('================================================================\n');
 

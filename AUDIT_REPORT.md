@@ -1,7 +1,7 @@
 # Comprehensive Audit Report: Browser-Based CUDA GPU & Cluster Simulator
 
 **Audit Timestamp:** October 28, 2026  
-**Audited System:** `@trentorch/cuda-sim` (WebAssembly & TypeScript/JavaScript CUDA Simulator)  
+**Audited System:** `gpubox` (WebAssembly & TypeScript/JavaScript CUDA Simulator)  
 **Target Cluster Configurations:** 1, 2, 4, 8, 16 Virtual GPU Nodes (A100, H100, RTX 4090, RTX 5060 Ti, RTX 3090, V100)
 
 ---

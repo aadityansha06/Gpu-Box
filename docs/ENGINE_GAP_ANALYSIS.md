@@ -70,4 +70,4 @@ Inspection of `demo/index.html` reveals that the playground is currently tightly
 To resolve these discrepancies and fulfill the product principle:
 1. **Unified `Engine` Interface**: A TypeScript/JavaScript-first headless SDK that provides 100% of simulator features (transpilation, SIMT execution, 1–16 GPU cluster, collectives, telemetry, and diagnostics) with zero DOM dependencies.
 2. **WASM Alignment**: Expose the analytical models, counters, and high-performance kernel simulation routines through the unified interface, honestly reporting in `getCapabilities()` which capabilities run in JS vs WASM.
-3. **Thin Client Playground**: Rebuild `demo/index.html` to consume exclusively the public SDK (`import { createSimulator, compile, run } from '@trentorch/cuda-sim'`).
+3. **Thin Client Playground**: Rebuild `demo/index.html` to consume exclusively the public SDK (`import { createSimulator, compile, run } from 'gpubox'`).
