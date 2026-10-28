@@ -436,6 +436,159 @@ int main() {
     printf("If you can read this line, the bug was NOT caught.\\n");
     return 0;
 }`
+  },
+  {
+    id: "multi_gpu_nccl_8",
+    title: "8-GPU DGX Cluster",
+    blurb: "8-rank ring all-reduce with NVLink interconnect modeling",
+    tag: "Multi-GPU",
+    devices: 8,
+    expect: "GPU Rank 0: 16.000000",
+    code: `// 8-GPU DGX SuperPOD Ring AllReduce Simulation
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <cstdio>
+
+int main() {
+    int numGpus = 8;
+    int count = 64;
+    size_t bytes = count * sizeof(float);
+
+    printf("Initializing 8-GPU DGX Cluster (NVLink 600 GB/s Interconnect)...\\n");
+
+    ncclComm_t comms[8];
+    ncclCommInitAll(comms, numGpus);
+
+    float *d_send[8];
+    float *d_recv[8];
+    float h_send[64];
+    for (int i = 0; i < count; i++) h_send[i] = 2.0f;
+
+    // Allocate memory on each virtual GPU node and copy input shard
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        cudaMalloc(&d_send[r], bytes);
+        cudaMalloc(&d_recv[r], bytes);
+        cudaMemcpy(d_send[r], h_send, bytes, cudaMemcpyHostToDevice);
+    }
+
+    // Execute Native Ring AllReduce across all 8 ranks
+    printf("Invoking ncclAllReduce(sum) across 8 GPU ranks...\\n");
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        ncclAllReduce(d_send[r], d_recv[r], count, ncclFloat, ncclSum, comms[r], 0);
+    }
+
+    // Verify reduction output on each device (Expected: 8 * 2.0 = 16.0)
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        float h_recv[64];
+        cudaMemcpy(h_recv, d_recv[r], bytes, cudaMemcpyDeviceToHost);
+        printf("GPU Rank %d: %f (Expected: 16.000000)\\n", r, h_recv[0]);
+    }
+
+    return 0;
+}`
+  },
+  {
+    id: "multi_gpu_nccl_16",
+    title: "16-GPU Cluster Pod",
+    blurb: "16-node high-bandwidth ring collectives across virtual cluster",
+    tag: "Multi-GPU",
+    devices: 16,
+    expect: "GPU 0 reduced element 0: 16.000000",
+    code: `// 16-GPU Cluster Pod Simulation (Large-Scale NCCL Ring Collective)
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <cstdio>
+
+int main() {
+    int numGpus = 16;
+    int count = 64;
+    size_t bytes = count * sizeof(float);
+
+    printf("Initializing 16-GPU Cluster Pod (Topology: 16 Virtual Nodes)...\\n");
+
+    ncclComm_t comms[16];
+    ncclCommInitAll(comms, numGpus);
+
+    float *d_send[16];
+    float *d_recv[16];
+    float h_send[64];
+    for (int i = 0; i < count; i++) h_send[i] = 1.0f;
+
+    // Allocate memory across all 16 virtual devices
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        cudaMalloc(&d_send[r], bytes);
+        cudaMalloc(&d_recv[r], bytes);
+        cudaMemcpy(d_send[r], h_send, bytes, cudaMemcpyHostToDevice);
+    }
+
+    // Execute 16-Rank High-Bandwidth Ring AllReduce
+    printf("Executing 16-Rank Ring AllReduce across NVLink/NVSwitch fabric...\\n");
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        ncclAllReduce(d_send[r], d_recv[r], count, ncclFloat, ncclSum, comms[r], 0);
+    }
+
+    // Verify reduction output on each device (Expected: 16 * 1.0 = 16.0)
+    for (int r = 0; r < numGpus; r++) {
+        cudaSetDevice(r);
+        float h_recv[64];
+        cudaMemcpy(h_recv, d_recv[r], bytes, cudaMemcpyDeviceToHost);
+        printf("GPU %d reduced element 0: %f (Expected: 16.000000)\\n", r, h_recv[0]);
+    }
+
+    return 0;
+}`
+  },
+  {
+    id: "custom",
+    title: "Custom / Blank Code",
+    blurb: "Write or paste any supported CUDA C++ kernel logic",
+    tag: "Custom",
+    devices: 1,
+    expect: "h_c[1]  = 2.000000",
+    code: `// Custom CUDA C++ Kernel Template
+#include <cstdio>
+
+__global__ void customKernel(float* c, const float* a, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        c[i] = a[i] * 2.0f;
+    }
+}
+
+int main() {
+    int n = 256;
+    size_t bytes = n * sizeof(float);
+
+    float *d_a, *d_c;
+    cudaMalloc(&d_a, bytes);
+    cudaMalloc(&d_c, bytes);
+
+    float h_a[256];
+    for (int i = 0; i < n; i++) h_a[i] = 1.0f * i;
+
+    cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
+
+    dim3 block(64);
+    dim3 grid((n + block.x - 1) / block.x);
+    customKernel<<<grid, block>>>(d_c, d_a, n);
+    cudaDeviceSynchronize();
+
+    float h_c[256];
+    cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
+
+    printf("Custom Kernel Verified:\\n");
+    printf("  h_c[1]  = %f (Expected: 2.000000)\\n", h_c[1]);
+    printf("  h_c[10] = %f (Expected: 20.000000)\\n", h_c[10]);
+
+    cudaFree(d_a);
+    cudaFree(d_c);
+    return 0;
+}`
   }
 ];
 

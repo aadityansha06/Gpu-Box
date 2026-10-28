@@ -2,12 +2,14 @@
   import { PRESETS } from '../../lib/presets.js';
   import { runCUDA, formatCounters, formatBytes, getGPUProfile } from '../../lib/engine.js';
   import MemoryBankGrid from '../../lib/MemoryBankGrid.svelte';
+  import CodeEditor from '../../lib/CodeEditor.svelte';
 
   let selectedPresetId = PRESETS[0].id;
   let selectedProfile = 'A100';
   let selectedDevices = 1;
   let code = PRESETS[0].code;
 
+  let mode = 'preset'; // 'preset' | 'custom'
   let isRunning = false;
   let runStatus = 'IDLE';
   let runOutput = '';
@@ -18,6 +20,8 @@
   let profileSpec = null;
   let executionTimeMs = 0;
   let activeTab = 'output';
+
+  let fileInputRef;
 
   const profiles = [
     { id: 'A100', name: 'NVIDIA A100 SXM4 (80GB, 2039 GB/s, Ampere)' },
@@ -36,6 +40,11 @@
     selectedPresetId = preset.id;
     code = preset.code;
     selectedDevices = preset.devices || 1;
+    if (preset.id === 'custom') {
+      mode = 'custom';
+    } else {
+      mode = 'preset';
+    }
     runStatus = 'IDLE';
     runOutput = '';
     runErrors = [];
@@ -48,7 +57,7 @@
     if (isRunning) return;
     isRunning = true;
     runStatus = 'RUNNING';
-    runOutput = 'Transpiling and executing on virtual GPU...';
+    runOutput = 'Transpiling and executing on virtual GPU cluster...';
     runErrors = [];
     transpiledCode = '';
     rawCounters = null;
@@ -85,24 +94,6 @@
     }
   }
 
-  function handleEditorKeydown(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleRun();
-      return;
-    }
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const target = e.target;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-      code = code.substring(0, start) + '    ' + code.substring(end);
-      setTimeout(() => {
-        target.selectionStart = target.selectionEnd = start + 4;
-      }, 0);
-    }
-  }
-
   function handleClear() {
     runOutput = '// Console cleared.';
     runErrors = [];
@@ -123,32 +114,85 @@
       navigator.clipboard.writeText(transpiledCode);
     }
   }
+
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      code = event.target?.result || '';
+      mode = 'custom';
+      selectedPresetId = 'custom';
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function handleDownload() {
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kernel.cu';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function resetCustomTemplate() {
+    const customPreset = PRESETS.find(p => p.id === 'custom');
+    if (customPreset) {
+      code = customPreset.code;
+      selectedPresetId = 'custom';
+      mode = 'custom';
+    }
+  }
 </script>
 
 <svelte:head>
-  <title>GPUBOX Playground &bull; Client-Side CUDA & Cluster Simulator</title>
+  <title>GPUBOX Playground &bull; Syntax-Highlighted Multi-GPU CUDA Simulation</title>
 </svelte:head>
 
 <div class="playground-layout">
   <!-- Top Control Header -->
   <header class="pg-header">
     <div class="pg-header__left">
-      <div class="control-unit">
-        <label for="pg-preset">Preset Algorithm:</label>
-        <select
-          id="pg-preset"
-          class="pg-select"
-          bind:value={selectedPresetId}
-          on:change={() => {
-            const p = PRESETS.find(x => x.id === selectedPresetId);
-            if (p) selectPreset(p);
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button
+          class="mode-btn {mode === 'preset' ? 'mode-btn--active' : ''}"
+          on:click={() => mode = 'preset'}
+        >
+          Preset Workloads
+        </button>
+        <button
+          class="mode-btn {mode === 'custom' ? 'mode-btn--active' : ''}"
+          on:click={() => {
+            mode = 'custom';
+            if (selectedPresetId !== 'custom') resetCustomTemplate();
           }}
         >
-          {#each PRESETS as p}
-            <option value={p.id}>{p.title} ({p.tag})</option>
-          {/each}
-        </select>
+          Custom Run
+        </button>
       </div>
+
+      {#if mode === 'preset'}
+        <div class="control-unit">
+          <label for="pg-preset">Preset:</label>
+          <select
+            id="pg-preset"
+            class="pg-select"
+            bind:value={selectedPresetId}
+            on:change={() => {
+              const p = PRESETS.find(x => x.id === selectedPresetId);
+              if (p) selectPreset(p);
+            }}
+          >
+            {#each PRESETS as p}
+              <option value={p.id}>{p.title} ({p.tag})</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
 
       <div class="control-unit">
         <label for="pg-profile">Hardware Profile:</label>
@@ -163,13 +207,36 @@
         <label for="pg-nodes">Virtual Cluster:</label>
         <select id="pg-nodes" class="pg-select" bind:value={selectedDevices}>
           {#each deviceCounts as count}
-            <option value={count}>{count} GPU{count > 1 ? 's' : ''} ({count > 1 ? 'NCCL Ring / NVLink' : 'Single Node'})</option>
+            <option value={count}>{count} GPU{count > 1 ? 's' : ''} ({count >= 8 ? 'SuperPOD / Ring NVLink' : (count > 1 ? 'NVLink Ring' : 'Single Node')})</option>
           {/each}
         </select>
       </div>
     </div>
 
     <div class="pg-header__actions">
+      <!-- Hidden file input for Upload -->
+      <input
+        type="file"
+        accept=".cu,.cpp,.c"
+        bind:this={fileInputRef}
+        style="display:none"
+        on:change={handleFileUpload}
+      />
+
+      <button class="btn btn--secondary btn--sm" on:click={() => fileInputRef.click()} title="Upload .cu or .cpp file">
+        Upload .cu
+      </button>
+
+      <button class="btn btn--secondary btn--sm" on:click={handleDownload} title="Download kernel as .cu file">
+        Save .cu
+      </button>
+
+      {#if mode === 'custom'}
+        <button class="btn btn--secondary btn--sm" on:click={resetCustomTemplate} title="Reset to clean CUDA template">
+          Template
+        </button>
+      {/if}
+
       <button
         class="btn btn--primary btn--sm"
         disabled={isRunning}
@@ -191,13 +258,13 @@
 
   <!-- Split IDE Workspace -->
   <div class="pg-workspace">
-    <!-- Left Editor Pane -->
+    <!-- Left Editor Pane with Syntax Highlighting -->
     <section class="pg-pane pg-pane--editor">
       <div class="pg-pane__header">
         <div class="file-tag">
           <span class="file-dot"></span>
           <span class="file-name">kernel.cu</span>
-          <span class="file-lang">CUDA C++</span>
+          <span class="file-lang">CUDA C++ &bull; Syntax Highlighted</span>
         </div>
 
         <div class="pane-actions">
@@ -209,13 +276,12 @@
       </div>
 
       <div class="editor-wrap">
-        <textarea
-          class="code-textarea"
-          bind:value={code}
-          on:keydown={handleEditorKeydown}
-          spellcheck="false"
+        <CodeEditor
+          bind:code
+          language="cuda"
           placeholder="// Paste or write supported CUDA C++ code here..."
-        ></textarea>
+          on:run={handleRun}
+        />
       </div>
     </section>
 
@@ -345,14 +411,14 @@
           </div>
         {/if}
 
-        <!-- Tab 4: Cluster & NCCL -->
+        <!-- Tab 4: Cluster & NCCL (1 to 16 GPUs) -->
         {#if activeTab === 'multigpu'}
           <div class="cluster-tab-view">
             <div class="kpi-grid">
               <div class="kpi-card">
                 <span class="kpi-label">Cluster GPU Nodes</span>
                 <span class="kpi-val">{selectedDevices} Virtual Devices</span>
-                <span class="kpi-sub">Interconnect: {selectedDevices > 1 ? 'NVLink Ring' : 'Single PCIe'}</span>
+                <span class="kpi-sub">Interconnect: {selectedDevices >= 8 ? 'NVLink 4 NVSwitch Mesh' : (selectedDevices > 1 ? 'NVLink Ring' : 'Single PCIe')}</span>
               </div>
               <div class="kpi-card">
                 <span class="kpi-label">Cross-GPU Traffic</span>
@@ -362,9 +428,9 @@
             </div>
 
             <div class="cluster-nodes-list">
-              <div class="spec-section__title">Virtual Cluster Topology & Device Ranks</div>
+              <div class="spec-section__title">Virtual Cluster Topology & Device Ranks (0 to {selectedDevices - 1})</div>
               {#if selectedDevices > 1}
-                <div class="nodes-grid">
+                <div class="nodes-grid nodes-grid--{selectedDevices > 8 ? 'dense' : 'normal'}">
                   {#each Array(selectedDevices) as _, rank}
                     <div class="node-card">
                       <div class="node-card__header">
@@ -373,7 +439,8 @@
                       </div>
                       <div class="node-stats">
                         <span class="node-stat-item">Device ID: cudaSetDevice({rank})</span>
-                        <span class="node-stat-item">Peer Status: P2P Enabled</span>
+                        <span class="node-stat-item">Peer Fabric: NVLink Bidirectional</span>
+                        <span class="node-stat-item">Rank Status: Shard Active</span>
                       </div>
                     </div>
                   {/each}
@@ -387,7 +454,7 @@
           </div>
         {/if}
 
-        <!-- Tab 5: Transpiled JavaScript -->
+        <!-- Tab 5: Transpiled JavaScript with Syntax Highlighting -->
         {#if activeTab === 'transpiled'}
           <div class="transpiled-tab-view">
             <div class="transpiled-header">
@@ -396,7 +463,13 @@
                 Copy JS
               </button>
             </div>
-            <pre class="terminal-body">{transpiledCode || '// Transpiled JavaScript code will appear here after clicking "Run Simulation"...'}</pre>
+            <div class="transpiled-editor-wrap">
+              <CodeEditor
+                code={transpiledCode || '// Transpiled JavaScript code will appear here after clicking "Run Simulation"...'}
+                language="javascript"
+                readOnly={true}
+              />
+            </div>
           </div>
         {/if}
       </div>
@@ -430,6 +503,36 @@
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  /* Mode Toggle */
+  .mode-toggle {
+    display: flex;
+    background: #05070c;
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: none;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mode-btn:hover {
+    color: #ffffff;
+  }
+
+  .mode-btn--active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
   }
 
   .control-unit {
@@ -466,7 +569,7 @@
   .pg-header__actions {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   /* Workspace */
@@ -565,24 +668,6 @@
     display: flex;
     position: relative;
     overflow: hidden;
-  }
-
-  .code-textarea {
-    width: 100%;
-    height: 100%;
-    background: #06080e;
-    color: #e2e8f0;
-    font-family: var(--font-mono);
-    font-size: 0.88rem;
-    line-height: 1.6;
-    padding: 1rem 1.25rem;
-    border: none;
-    outline: none;
-    resize: none;
-    tab-size: 4;
-    white-space: pre;
-    overflow-wrap: normal;
-    overflow: auto;
   }
 
   /* Inspector Tabs */
@@ -774,8 +859,18 @@
     gap: 0.65rem;
   }
 
+  .nodes-grid--dense {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 900px) {
+    .nodes-grid--dense {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
   @media (max-width: 600px) {
-    .nodes-grid {
+    .nodes-grid, .nodes-grid--dense {
       grid-template-columns: 1fr;
     }
   }
@@ -817,5 +912,12 @@
     font-size: 0.78rem;
     color: var(--text-muted);
     margin-bottom: 0.6rem;
+  }
+
+  .transpiled-editor-wrap {
+    height: 440px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
   }
 </style>

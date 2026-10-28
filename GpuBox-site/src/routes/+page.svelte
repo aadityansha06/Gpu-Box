@@ -5,6 +5,7 @@
   import { runCUDA, formatCounters, formatBytes } from '../lib/engine.js';
   import { LINKS, PRICING } from '../lib/config.js';
   import MemoryBankGrid from '../lib/MemoryBankGrid.svelte';
+  import CodeEditor from '../lib/CodeEditor.svelte';
 
   let canvasRef;
   let stop3D;
@@ -275,19 +276,21 @@
 
         <!-- Playground Grid: Editor & Output -->
         <div class="playground-grid">
-          <!-- Code Editor Area -->
+          <!-- Code Editor Area with Real-Time Syntax Highlighting -->
           <div class="editor-pane">
             <div class="pane-header">
               <span class="pane-header__title">CUDA C++ Kernel Source</span>
-              <span class="pane-header__meta">{code.split('\n').length} lines</span>
+              <span class="pane-header__meta">{code.split('\n').length} lines &bull; Syntax Highlighted</span>
             </div>
-            <textarea
-              bind:value={code}
-              class="code-editor"
-              spellcheck="false"
-              on:keydown={handleEditorKeydown}
-              placeholder="Paste or write supported CUDA C++ code here..."
-            ></textarea>
+            <div class="editor-body">
+              <CodeEditor
+                bind:code
+                language="cuda"
+                minHeight="420px"
+                placeholder="// Paste or write supported CUDA C++ code here..."
+                on:run={handleRun}
+              />
+            </div>
           </div>
 
           <!-- Simulation Output & Telemetry Area -->
