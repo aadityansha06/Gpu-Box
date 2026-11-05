@@ -2234,6 +2234,33 @@
       const extracted = extractKernels(src);
       const hostSrc = extracted.remaining;
 
+      // --- Unknown type names in kernel / device-function parameter lists (e.g. "consfloat* b") ---
+      (function checkParamTypes() {
+        const KNOWN = new Set(['void', 'bool', 'char', 'short', 'int', 'long', 'float', 'double', 'unsigned', 'signed', 'size_t', 'half', 'half2',
+          '__half', '__half2', '__nv_bfloat16', '__nv_bfloat162', 'dim3', 'struct', 'class', 'enum', 'typename', 'auto', 'const', 'volatile', 'ssize_t',
+          'cudaStream_t', 'cudaEvent_t', 'ncclComm_t', 'ncclDataType_t', 'ncclRedOp_t', 'curandState', 'curandState_t', 'cudaTextureObject_t']);
+        const user = new Set();
+        let m;
+        const decl = /\b(?:struct|class|enum|typename|union)\s+(\w+)|\btypedef\b[^;{}]*?\b(\w+)\s*;|\busing\s+(\w+)\s*=|\btemplate\s*<([^>]*)>/g;
+        while ((m = decl.exec(src)) !== null) {
+          [m[1], m[2], m[3]].forEach(function(n) { if (n) user.add(n); });
+          if (m[4]) m[4].split(',').forEach(function(p) { const w = p.trim().split(/\s+/).pop(); if (w) user.add(w); });
+        }
+        const all = extracted.kernels.concat(extracted.deviceFuncs);
+        all.forEach(function(fn) {
+          (fn.params || []).forEach(function(p) {
+            const toks = String(p.type || '').replace(/[*&]/g, ' ').split(/\s+/).filter(Boolean);
+            toks.forEach(function(t) {
+              if (/^[A-Za-z_]\w*$/.test(t) && !KNOWN.has(t) && !user.has(t) && !/^u?int\d+_t$/.test(t) && !/^(float|double|int|uint|char|short|long|half)[1-4]$/.test(t) && !/^cuda\w+_t$/.test(t)) {
+                const idx = cudaSource.search(new RegExp('\\b' + t + '\\b'));
+                const line = idx >= 0 ? cudaSource.slice(0, idx).split('\n').length : 0;
+                errors.push('Compile error' + (line ? ' (line ' + line + ')' : '') + ": unknown type name '" + t + "' in the parameters of '" + fn.name + "'. Did you mistype a type such as 'const float'?");
+              }
+            });
+          });
+        });
+      })();
+
       // --- Check for explicitly unsupported CUDA features ---
       if (/\b(?:__)?asm(?:__)?\s*(?:volatile)?\s*\(/i.test(src) || /\b(?:__)?asm(?:__)?\s*\{/i.test(src)) {
         errors.push('Unsupported CUDA feature: Inline PTX assembly (__asm__) is not supported in browser-based simulator');

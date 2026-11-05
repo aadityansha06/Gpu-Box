@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-05T14:21:10.593Z",
+  "timestamp": "2026-11-05T15:16:08.206Z",
   "environment": {
     "nodeVersion": "v26.8.1",
     "platform": "win32",
@@ -9,28 +9,28 @@
     "total": 9,
     "passed": 9,
     "failed": 0,
-    "durationMs": 96
+    "durationMs": 154
   },
   "tests": [
     {
       "category": "1. Vector Addition",
       "name": "Negative, zero, fractional, and large magnitudes (N=67)",
       "status": "PASS",
-      "durationMs": 50,
+      "durationMs": 64,
       "error": null
     },
     {
       "category": "2. Reduction & Norm",
       "name": "Block tree reduction & L2 norm with cancellation (N=37)",
       "status": "PASS",
-      "durationMs": 7,
+      "durationMs": 8,
       "error": null
     },
     {
       "category": "3. Matrix Multiplication",
       "name": "Tiled MatMul with negative and fractional values (11x13 * 13x17)",
       "status": "PASS",
-      "durationMs": 24,
+      "durationMs": 55,
       "error": null
     },
     {
@@ -65,14 +65,14 @@
       "category": "5. NCCL Collectives",
       "name": "Broadcast from non-zero root (Root 3 across 8 GPUs)",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
       "category": "6. Attention Pipeline",
       "name": "FlashAttention-style tiled attention vs CPU reference (N=5, D=6, Seed=1337)",
       "status": "PASS",
-      "durationMs": 12,
+      "durationMs": 23,
       "error": null
     }
   ]

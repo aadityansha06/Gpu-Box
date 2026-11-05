@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "timestamp": "2026-11-05T14:21:13.574Z",
+  "timestamp": "2026-11-05T15:16:13.534Z",
   "environment": {
     "nodeVersion": "v26.8.1",
     "platform": "win32",
@@ -30,7 +30,7 @@
       "failed": 0
     },
     "releaseStatus": "PASS",
-    "durationMs": 4024
+    "durationMs": 7048
   },
   "phases": [
     {
@@ -41,7 +41,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 579,
+      "durationMs": 924,
       "error": null
     },
     {
@@ -52,7 +52,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 141,
+      "durationMs": 281,
       "error": null
     },
     {
@@ -63,7 +63,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 145,
+      "durationMs": 228,
       "error": null
     },
     {
@@ -74,7 +74,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 195,
+      "durationMs": 309,
       "error": null
     },
     {
@@ -85,7 +85,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 229,
+      "durationMs": 354,
       "error": null
     },
     {
@@ -96,7 +96,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 779,
+      "durationMs": 1090,
       "error": null
     },
     {
@@ -107,7 +107,7 @@
       "failedCount": 0,
       "skippedCount": 0,
       "status": "PASS",
-      "durationMs": 1955,
+      "durationMs": 3860,
       "error": null
     }
   ],
@@ -116,14 +116,14 @@
       "category": "1. Indexing & Bounds",
       "name": "Off-by-one loop boundary (i <= n OOB write caught)",
       "status": "PASS",
-      "durationMs": 38,
+      "durationMs": 80,
       "error": null
     },
     {
       "category": "1. Indexing & Bounds",
       "name": "Incorrect thread indexing (forgetting blockIdx.x detected via output)",
       "status": "PASS",
-      "durationMs": 6,
+      "durationMs": 7,
       "error": null
     },
     {
@@ -144,7 +144,7 @@
       "category": "2. OOB Memory Access",
       "name": "Shared memory out-of-bounds read (throws RangeError)",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
@@ -165,14 +165,14 @@
       "category": "3. Reduction & Arithmetic",
       "name": "Vector normalization of zero vector yields NaN/div-by-zero",
       "status": "PASS",
-      "durationMs": 3,
+      "durationMs": 4,
       "error": null
     },
     {
       "category": "4. Synchronization",
       "name": "Divergent __syncthreads() inside conditional branch detected",
       "status": "PASS",
-      "durationMs": 2,
+      "durationMs": 3,
       "error": null
     },
     {
@@ -249,21 +249,21 @@
       "category": "6. Memcpy & Unsupported APIs",
       "name": "Inline PTX Assembly (__asm__) rejected at transpilation",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
       "category": "6. Memcpy & Unsupported APIs",
       "name": "CUDA Graph API (cudaGraphCreate) rejected at transpilation",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
       "category": "7. Diagnostics & State Isolation",
       "name": "cudaGetLastError captures error and resets error state",
       "status": "PASS",
-      "durationMs": 2,
+      "durationMs": 4,
       "error": null
     },
     {
@@ -319,14 +319,14 @@
       "category": "8. Allocation & Configuration Limits",
       "name": "Multi-GPU cross-device pointer access without peer access rejected",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
       "category": "8. Allocation & Configuration Limits",
       "name": "Multi-GPU cross-device pointer access succeeds after cudaDeviceEnablePeerAccess",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     }
   ],
@@ -335,21 +335,21 @@
       "category": "1. Vector Addition",
       "name": "Negative, zero, fractional, and large magnitudes (N=67)",
       "status": "PASS",
-      "durationMs": 50,
+      "durationMs": 64,
       "error": null
     },
     {
       "category": "2. Reduction & Norm",
       "name": "Block tree reduction & L2 norm with cancellation (N=37)",
       "status": "PASS",
-      "durationMs": 7,
+      "durationMs": 8,
       "error": null
     },
     {
       "category": "3. Matrix Multiplication",
       "name": "Tiled MatMul with negative and fractional values (11x13 * 13x17)",
       "status": "PASS",
-      "durationMs": 24,
+      "durationMs": 55,
       "error": null
     },
     {
@@ -384,14 +384,14 @@
       "category": "5. NCCL Collectives",
       "name": "Broadcast from non-zero root (Root 3 across 8 GPUs)",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
       "category": "6. Attention Pipeline",
       "name": "FlashAttention-style tiled attention vs CPU reference (N=5, D=6, Seed=1337)",
       "status": "PASS",
-      "durationMs": 12,
+      "durationMs": 23,
       "error": null
     }
   ]
