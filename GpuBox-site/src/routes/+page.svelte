@@ -7,6 +7,7 @@
   import MetricsPanel from '../lib/MetricsPanel.svelte';
   import CodeEditor from '../lib/CodeEditor.svelte';
   import parity from '../lib/parity.json';
+  import { makeShareUrl, readSharedState } from '../lib/share.js';
 
   let selectedPresetId = PRESETS[0].id;
   let selectedProfile = 'RTX 4050 Laptop';
@@ -73,7 +74,23 @@
     }
   }
 
-  onMount(() => {
+  let shareLabel = 'Share';
+  async function share() {
+    const url = await makeShareUrl('/', { code, profile: selectedProfile, devices: selectedDevices });
+    history.replaceState(null, '', url);
+    try { await navigator.clipboard.writeText(url); shareLabel = 'Link copied'; } catch (e) { shareLabel = 'Copy from address bar'; }
+    setTimeout(() => (shareLabel = 'Share'), 2200);
+  }
+
+  onMount(async () => {
+    const shared = await readSharedState();
+    if (shared) {
+      code = shared.code;
+      if (shared.profile) selectedProfile = shared.profile;
+      if (shared.devices) selectedDevices = shared.devices;
+      selectedPresetId = '';
+      document.getElementById('try')?.scrollIntoView();
+    }
     const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 400));
     idle(() => handleRun());
   });
@@ -115,6 +132,7 @@
       <div class="ide">
         <div class="ide__bar">
           <select class="field field--grow" bind:value={selectedPresetId} on:change={choosePreset} aria-label="Example">
+            <option value="" disabled hidden>Shared / custom code</option>
             {#each grouped as g}
               <optgroup label={g.name}>
                 {#each g.items as p}
@@ -129,6 +147,7 @@
           <select class="field" bind:value={selectedDevices} aria-label="Cluster size">
             {#each deviceCounts as n}<option value={n}>{n} GPU{n > 1 ? 's' : ''}</option>{/each}
           </select>
+          <button class="btn btn--ghost btn--sm" on:click={share} title="Copy a link that reproduces this exact run">{shareLabel}</button>
           <button class="btn btn--primary btn--sm" on:click={handleRun} disabled={isRunning}>
             {isRunning ? 'Running' : 'Run'}
           </button>
@@ -201,7 +220,7 @@
         <div class="who__item">
           <span class="who__n">01</span>
           <h3>You don't have a GPU</h3>
-          <p>Students, self-taught engineers and anyone on a Mac or an ordinary laptop. Learn CUDA and write real kernels without buying hardware or renting cloud time.</p>
+          <p>Students, self-taught engineers and anyone on a Mac or an ordinary laptop. The playground on this site is free for you: learn CUDA and write real kernels without buying hardware or renting cloud time.</p>
         </div>
         <div class="who__item">
           <span class="who__n">02</span>
@@ -211,7 +230,7 @@
         <div class="who__item">
           <span class="who__n">03</span>
           <h3>You work as a team</h3>
-          <p>Run the same kernels in CI before merging, hand a teammate a link that reproduces a bug, and stop arguing over who has the GPU this afternoon.</p>
+          <p>Send a teammate a Share link that reproduces a bug exactly, run the same kernels in CI before merging, and stop arguing over who has the GPU this afternoon.</p>
         </div>
       </div>
     </div>
@@ -280,7 +299,7 @@
         <div class="plan">
           <h3>Education</h3>
           <p class="plan__price">${PRICING.education.price}<span>/{PRICING.education.period}</span></p>
-          <p class="plan__for">Teachers and students learning CUDA without GPUs for everyone.</p>
+          <p class="plan__for">For schools, universities and bootcamps. Individual students can always use the playground free.</p>
           <ul><li>Unlimited learner seats</li><li>Browser playground integration</li><li>Autograding runner</li><li>All GPU profiles</li></ul>
           <a href={LINKS.buyEducation} class="btn btn--ghost btn--full">Get Education</a>
         </div>

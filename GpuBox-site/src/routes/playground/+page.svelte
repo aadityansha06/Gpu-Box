@@ -3,6 +3,7 @@
   import { runCUDA, formatCounters, formatBytes, getGPUProfile } from '../../lib/engine.js';
   import MetricsPanel from '../../lib/MetricsPanel.svelte';
   import { onMount } from 'svelte';
+  import { makeShareUrl, readSharedState } from '../../lib/share.js';
   import MemoryBankGrid from '../../lib/MemoryBankGrid.svelte';
   import CodeEditor from '../../lib/CodeEditor.svelte';
 
@@ -96,7 +97,25 @@
     }
   }
 
-  onMount(() => { setTimeout(handleRun, 150); });
+  let shareLabel = 'Share link';
+  async function share() {
+    const url = await makeShareUrl('/playground', { code, profile: selectedProfile, devices: selectedDevices });
+    history.replaceState(null, '', url);
+    try { await navigator.clipboard.writeText(url); shareLabel = 'Link copied'; } catch (e) { shareLabel = 'Copy from address bar'; }
+    setTimeout(() => (shareLabel = 'Share link'), 2200);
+  }
+
+  onMount(async () => {
+    const shared = await readSharedState();
+    if (shared) {
+      code = shared.code;
+      if (shared.profile) selectedProfile = shared.profile;
+      if (shared.devices) selectedDevices = shared.devices;
+      mode = 'custom';
+      selectedPresetId = 'custom';
+    }
+    setTimeout(handleRun, 150);
+  });
 
   function handleClear() {
     runOutput = '// Console cleared.';
@@ -229,6 +248,10 @@
 
       <button class="btn btn--secondary btn--sm" on:click={() => fileInputRef.click()} title="Upload .cu or .cpp file">
         Upload .cu
+      </button>
+
+      <button class="btn btn--secondary btn--sm" on:click={share} title="Copy a link that reproduces this exact run">
+        {shareLabel}
       </button>
 
       <button class="btn btn--secondary btn--sm" on:click={handleDownload} title="Download kernel as .cu file">
