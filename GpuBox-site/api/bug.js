@@ -2,7 +2,7 @@
 // Required env var (Vercel > Settings > Environment Variables):  RESEND_API_KEY
 // Optional:  BUG_REPORT_TO (default below), BUG_REPORT_FROM (must be a verified Resend sender)
 
-const TO = process.env.BUG_REPORT_TO || 'vermaadityansh@gmail.com';
+const TO = process.env.BUG_REPORT_TO || 'pkumariverma42@gmail.com';
 const FROM = process.env.BUG_REPORT_FROM || 'Gpubox Bugs <onboarding@resend.dev>';
 const MAX_IMAGES = 3;
 const MAX_IMAGE_B64 = 1_800_000; // ~1.3 MB each after client-side resize
