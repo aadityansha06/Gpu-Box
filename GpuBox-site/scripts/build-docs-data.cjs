@@ -63,13 +63,6 @@ const DOC_FILES = [
     category: 'Guides',
     filePath: path.join(docsDir, 'SECURITY_AND_CSP.md'),
     summary: 'Sandboxing untrusted user code, Content Security Policy headers, and isolated worker threads.'
-  },
-  {
-    slug: 'licensing',
-    title: 'Licensing & Commercial Terms',
-    category: 'Commercial',
-    filePath: path.join(rootDir, 'BUSINESS_IDEA.md'),
-    summary: 'Annual commercial licenses, educational discounts, engine-as-a-service distribution, and restrictions.'
   }
 ];
 
