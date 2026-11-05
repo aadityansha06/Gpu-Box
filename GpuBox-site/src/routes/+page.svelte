@@ -88,7 +88,6 @@
 
 <svelte:head>
   <title>Gpubox | Pre-validate CUDA in the browser</title>
-  <meta name="description" content="Run CUDA C++ and multi-GPU NCCL code in the browser and see bytes moved, FLOPs, bank conflicts, divergence and deadlocks before you spend GPU time. Verified against a physical RTX 4050." />
 </svelte:head>
 
 <div class="page">

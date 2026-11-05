@@ -1,7 +1,47 @@
 <script>
   import '../app.css';
+  import { page } from '$app/state';
   import GpuBoxLogo from '../lib/GpuBoxLogo.svelte';
+  import { SITE_URL } from '../lib/config.js';
+
+  const META = {
+    '/': { d: 'Run CUDA C++ and multi-GPU NCCL code in your browser. See bytes moved, FLOPs, bank conflicts, divergence and deadlocks before you spend GPU time. Verified against a physical RTX 4050.' },
+    '/playground': { d: 'Full browser IDE for CUDA C++: 17 runnable examples, 1 to 16 virtual GPUs, GPU report with data movement, compute and hazard findings.' },
+    '/docs': { d: 'Gpubox documentation: quickstart, API reference, integration guide, recipes and known limitations for the browser CUDA simulator.' },
+    '/benchmarks': { d: 'Gpubox benchmarks and hardware verification: simulator output compared with a physical NVIDIA RTX 4050 across 11 CUDA kernels.' }
+  };
+  $: path = page.url.pathname.replace(/\/$/, '') || '/';
+  $: desc = (META[path] || META['/']).d;
+  $: canonical = SITE_URL + (path === '/' ? '/' : path);
+  const ld = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Gpubox',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Web',
+    description: 'Browser-based CUDA and multi-GPU simulation and pre-validation engine.',
+    url: SITE_URL,
+    offers: [
+      { '@type': 'Offer', name: 'Education', price: '100', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'Commercial', price: '150', priceCurrency: 'USD' }
+    ]
+  });
 </script>
+
+<svelte:head>
+  <meta name="description" content={desc} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Gpubox" />
+  <meta property="og:title" content="Gpubox: pre-validate CUDA in the browser" />
+  <meta property="og:description" content={desc} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={SITE_URL + '/og.svg'} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Gpubox: pre-validate CUDA in the browser" />
+  <meta name="twitter:description" content={desc} />
+  {@html '<script type="application/ld+json">' + ld + '</' + 'script>'}
+</svelte:head>
 
 <div class="site-layout">
   <header class="site-header">

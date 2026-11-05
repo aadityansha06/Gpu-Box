@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [
     sveltekit({
+      prerender: { handleMissingId: 'ignore' },
       adapter: adapter({
         pages: 'build',
         assets: 'build',

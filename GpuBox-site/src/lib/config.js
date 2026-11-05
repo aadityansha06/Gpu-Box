@@ -1,4 +1,6 @@
 // Central site configuration. Licence buttons open a pre-filled email to CONTACT_EMAIL.
+// Public origin used for canonical URLs, sitemap and social cards. Change when you attach your domain.
+export const SITE_URL = 'https://gpubox.dev';
 export const CONTACT_EMAIL = 'vermaadityansh@gmail.com';
 
 const mail = (subject, body = '') =>
