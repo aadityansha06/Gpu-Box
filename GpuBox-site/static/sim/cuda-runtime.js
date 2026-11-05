@@ -90,6 +90,7 @@
       // Launch counters
       this.threadsLaunched = 0;
       this.blocksLaunched = 0;
+      this.kernelLaunches = 0;
 
       // Global memory
       this.globalLoads = 0;
@@ -134,6 +135,10 @@
       this._activeThreadId = undefined;
       // Per-warp shared bank tracking
       this._warpSharedBanks = [];
+      this._sharedWindows = new Map();
+      this._threadSharedSeq = new Map();
+      this._branchWindows = new Map();
+      this._threadBranchSeq = new Map();
       // Atomic contention tracking per kernel launch
       this._atomicContentionMap = new Map();
     }
@@ -185,6 +190,7 @@
 
     /** Flush all pending warp global access windows and compute transaction counts */
     flushWarpGlobalAccesses() {
+      this.flushBranchWindows();
       if (!this._warpAccessWindows || this._warpAccessWindows.size === 0) return;
       for (const [_, addresses] of this._warpAccessWindows) {
         if (!addresses || addresses.length === 0) continue;
@@ -207,37 +213,77 @@
     recordSharedLoad(byteAddr) {
       this.sharedLoads++;
       this.sharedLoadBytes += 4;
-      const bank = Math.floor(byteAddr / 4) % SHARED_MEM_BANKS;
-      this._warpSharedBanks.push(bank);
+      this._recordSharedWord(Math.floor(byteAddr / 4));
     }
 
     /** Record a shared memory store */
     recordSharedStore(byteAddr) {
       this.sharedStores++;
       this.sharedStoreBytes += 4;
-      const bank = Math.floor(byteAddr / 4) % SHARED_MEM_BANKS;
-      this._warpSharedBanks.push(bank);
+      this._recordSharedWord(Math.floor(byteAddr / 4));
+    }
+
+    /**
+     * Group shared accesses by (warp, k-th shared access of the thread): lanes executing the
+     * same instruction form one window, so bank conflicts are evaluated per warp-instruction.
+     */
+    _recordSharedWord(word) {
+      if (this._activeWarpId !== undefined && this._activeThreadId !== undefined) {
+        const tk = this._activeWarpId + ':' + this._activeThreadId;
+        const seq = this._threadSharedSeq.get(tk) || 0;
+        this._threadSharedSeq.set(tk, seq + 1);
+        const wk = this._activeWarpId + ':' + seq;
+        let win = this._sharedWindows.get(wk);
+        if (!win) { win = []; this._sharedWindows.set(wk, win); }
+        win.push(word);
+      } else {
+        this._warpSharedBanks.push(word);
+      }
+    }
+
+    _countBankConflicts(words) {
+      if (words.length <= 1) return 0;
+      // Conflict = distinct 4-byte words mapping to the same bank (same word = broadcast, free).
+      const perBank = new Array(SHARED_MEM_BANKS);
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        const bk = w % SHARED_MEM_BANKS;
+        (perBank[bk] || (perBank[bk] = new Set())).add(w);
+      }
+      let conflicts = 0;
+      for (let bk = 0; bk < SHARED_MEM_BANKS; bk++) {
+        if (perBank[bk] && perBank[bk].size > 1) conflicts += perBank[bk].size - 1;
+      }
+      return conflicts;
     }
 
     /** Flush per-warp shared bank accesses and count conflicts */
     flushSharedBankAccesses() {
-      if (this._warpSharedBanks.length <= 1) {
-        this._warpSharedBanks = [];
-        return;
-      }
-      // Count duplicate bank accesses in this warp-step
-      const bankCounts = new Int32Array(SHARED_MEM_BANKS);
-      for (let i = 0; i < this._warpSharedBanks.length; i++) {
-        bankCounts[this._warpSharedBanks[i]]++;
-      }
-      let conflicts = 0;
-      for (let b = 0; b < SHARED_MEM_BANKS; b++) {
-        if (bankCounts[b] > 1) {
-          conflicts += bankCounts[b] - 1;
-        }
-      }
-      this.bankConflicts += conflicts;
+      for (const win of this._sharedWindows.values()) this.bankConflicts += this._countBankConflicts(win);
+      this._sharedWindows.clear();
+      this._threadSharedSeq.clear();
+      if (this._warpSharedBanks.length > 1) this.bankConflicts += this._countBankConflicts(this._warpSharedBanks);
       this._warpSharedBanks = [];
+    }
+
+    /**
+     * Record a branch outcome. A warp diverges at a branch when lanes executing the same
+     * dynamic instance of that branch (same static id, same per-thread occurrence) disagree.
+     */
+    recordBranch(id, outcome) {
+      if (this._activeWarpId === undefined || this._activeThreadId === undefined) return;
+      const tk = this._activeThreadId + ':' + id;
+      const k = this._threadBranchSeq.get(tk) || 0;
+      this._threadBranchSeq.set(tk, k + 1);
+      const wk = this._activeWarpId + ':' + id + ':' + k;
+      const prev = this._branchWindows.get(wk) || 0;
+      this._branchWindows.set(wk, prev | (outcome ? 1 : 2));
+    }
+
+    flushBranchWindows() {
+      for (const v of this._branchWindows.values()) if (v === 3) this.divergentBranches++;
+      this._branchWindows.clear();
+      this._threadBranchSeq.clear();
     }
 
     /** Record a warp's global memory access for transaction/coalescing analysis */
@@ -269,32 +315,56 @@
 
     // ── Derived metrics ──
 
-    /** Estimated cycles based on GPU profile latencies */
-    get estimatedCycles() {
-      const prof = this._gpuProfile;
-      const globalLatency = prof.globalMemLatencyCycles || 400;
-      const sharedLatency = prof.sharedMemLatencyCycles || 20;
-      const atomicLatency = prof.atomicLatencyCycles || 50;
-      const syncLatency = prof.syncLatencyCycles || 5;
-      const flopLatency = prof.flopLatencyCycles || 1;
-
-      return (this.globalLoads + this.globalStores) * globalLatency +
-        (this.sharedLoads + this.sharedStores) * sharedLatency +
-        this.atomicOps * atomicLatency +
-        this.syncthreadsCount * syncLatency +
-        this.flopCount * flopLatency;
+    /**
+     * Modeled breakdown of device time in seconds (roofline-style).
+     *   time = launch overhead + max(DRAM, compute, shared-memory) + atomics + barriers + interconnect
+     * DRAM traffic is charged per 32-byte sector actually touched, so uncoalesced access costs more.
+     * Calibrated against measurements on an RTX 4050 Laptop GPU (see scripts/gpu-parity.js).
+     */
+    get timeBreakdown() {
+      const p = this._gpuProfile || {};
+      const clockHz = (p.boostClockMHz || p.clockSpeedMHz || 1500) * 1e6;
+      const sms = p.smCount || 80;
+      const blocks = Math.max(1, this.blocksLaunched || 1);
+      const active = Math.max(1, Math.min(sms, blocks));
+      const occ = active / sms;
+      const memBW = (p.memBandwidthGBs || p.memoryBandwidthGBs || 900) * 1e9 * 0.85 * Math.min(1, occ * 4);
+      const dramBytes = this.globalTransactions > 0 ? this.globalTransactions * SECTOR_SIZE_BYTES : (this.globalLoadBytes + this.globalStoreBytes);
+      const tDram = dramBytes / memBW;
+      const peakFlops = (p.peakTFLOPS || p.fp32TFLOPS || 10) * 1e12 * 0.75 * occ;
+      const tCompute = this.flopCount / peakFlops;
+      const shBW = (p.sharedMemBandwidthGBs || 2500) * 1e9 * occ;
+      const tShared = (this.sharedLoadBytes + this.sharedStoreBytes) / shBW + this.bankConflicts / (active * clockHz);
+      const tAtomic = this.atomicOps / (active * clockHz * 0.5) + this.atomicMaxContention * (p.atomicLatencyCycles || 50) / clockHz;
+      const threadsPerBlock = Math.max(1, this.threadsLaunched / blocks);
+      const barriersPerBlock = this.syncthreadsCount / Math.max(1, this.threadsLaunched) ;
+      const waves = Math.max(1, Math.ceil(blocks / (active * 4)));
+      const tSync = barriersPerBlock * waves * 40 / clockHz;
+      const tLaunch = (this.kernelLaunches || 0) * 7e-6;
+      const linkGBs = (p.nvlinkBandwidthGBs > 0 ? p.nvlinkBandwidthGBs / 2 * 0.8 : (p.pcieBandwidthGBs || 16) * 0.8);
+      const tComm = this.crossGpuBytes / (linkGBs * 1e9) + this.ncclOps * 5e-6;
+      const tH2D = (this.memcpyH2DBytes + this.memcpyD2HBytes) / ((p.pcieBandwidthGBs || 16) * 0.8 * 1e9);
+      return { tLaunch, tDram, tCompute, tShared, tAtomic, tSync, tComm, tHostCopy: tH2D, clockHz,
+        kernel: tLaunch + Math.max(tDram, tCompute, tShared) + tAtomic + tSync };
     }
 
-    /** Estimated wall-clock time in milliseconds */
+    /** Estimated device time in milliseconds (kernel + interconnect; host copies reported separately) */
     get estimatedTimeMs() {
-      const clockHz = (this._gpuProfile.clockSpeedMHz || 1500) * 1e6;
-      return (this.estimatedCycles / clockHz) * 1000;
+      if (this._deviceTimesMs) return Math.max.apply(null, this._deviceTimesMs);
+      const t = this.timeBreakdown;
+      return (t.kernel + t.tComm) * 1000;
+    }
+
+    /** Estimated cycles = modeled time x core clock */
+    get estimatedCycles() {
+      const clockHz = (this._gpuProfile.boostClockMHz || this._gpuProfile.clockSpeedMHz || 1500) * 1e6;
+      return Math.round(this.estimatedTimeMs / 1000 * clockHz);
     }
 
     /** Compute utilization: FLOPs / peak FLOPs over the estimated time */
     get computeUtilization() {
-      const peakGFLOPS = this._gpuProfile.peakTFLOPS
-        ? this._gpuProfile.peakTFLOPS * 1000
+      const peakGFLOPS = (this._gpuProfile.peakTFLOPS || this._gpuProfile.fp32TFLOPS)
+        ? (this._gpuProfile.peakTFLOPS || this._gpuProfile.fp32TFLOPS) * 1000
         : (this._gpuProfile.peakGFLOPS || 10000);
       const timeSec = this.estimatedTimeMs / 1000;
       if (timeSec === 0) return 0;
@@ -330,6 +400,7 @@
       const res = {
         threadsLaunched: this.threadsLaunched,
         blocksLaunched: this.blocksLaunched,
+        kernelLaunches: this.kernelLaunches,
         globalLoads: this.globalLoads,
         globalStores: this.globalStores,
         globalLoadBytes: this.globalLoadBytes,
@@ -356,6 +427,7 @@
         flopCount: this.flopCount,
         estimatedCycles: this.estimatedCycles,
         estimatedTimeMs: this.estimatedTimeMs,
+        timeBreakdownUs: (function(t) { return { launch: t.tLaunch * 1e6, dram: t.tDram * 1e6, compute: t.tCompute * 1e6, shared: t.tShared * 1e6, atomics: t.tAtomic * 1e6, barriers: t.tSync * 1e6, interconnect: t.tComm * 1e6, hostCopy: t.tHostCopy * 1e6 }; })(this.timeBreakdown),
         computeUtilization: this.computeUtilization,
         memoryUtilization: this.memoryUtilization,
         occupancy: this.occupancy
@@ -704,9 +776,22 @@
       }
       switch (kind) {
         case CUDA_MEMCPY_H2D: {
+          if (!(dst instanceof DevicePointer)) {
+            // Destination is a __constant__ symbol (plain typed array): copy by value.
+            const n = Math.min(dst.length, ArrayBuffer.isView(src) || Array.isArray(src) ? src.length : 0,
+              Math.floor(sizeBytes / (dst.BYTES_PER_ELEMENT || 4)));
+            for (let i = 0; i < n; i++) dst[i] = src[i];
+            this._counters.memcpyH2DBytes += sizeBytes;
+            break;
+          }
           // src is host typed array, dst is DevicePointer
           const dstU8 = new Uint8Array(dst._buffer, dst._offset * dst._elementSize);
-          if (ArrayBuffer.isView(src)) {
+          if (ArrayBuffer.isView(src) && !(src instanceof Float32Array) && !(src instanceof Uint8Array) && !(src instanceof Int8Array) && dst._elementSize === 4) {
+            // Device memory stores every 4-byte element as a float32 value: convert int32/uint32/float64 host data by VALUE.
+            const n = Math.min(Math.floor(sizeBytes / src.BYTES_PER_ELEMENT), src.length);
+            const f32 = new Float32Array(dst._buffer, dst._offset * 4, Math.min(n, Math.floor((dst._buffer.byteLength - dst._offset * 4) / 4)));
+            for (let i = 0; i < f32.length; i++) f32[i] = src[i];
+          } else if (ArrayBuffer.isView(src)) {
             const copyLen = Math.min(sizeBytes, src.byteLength);
             const srcU8 = new Uint8Array(src.buffer, src.byteOffset, copyLen);
             dstU8.set(srcU8.subarray(0, copyLen));
@@ -735,7 +820,15 @@
           const availableSrcBytes = Math.max(0, (src._buffer ? src._buffer.byteLength : 0) - (src._offset * src._elementSize));
           const copyLen = Math.min(sizeBytes, dstLen, availableSrcBytes);
           const srcU8 = new Uint8Array(src._buffer, src._offset * src._elementSize, copyLen);
-          if (ArrayBuffer.isView(dst)) {
+          if (ArrayBuffer.isView(dst) && !(dst instanceof Float32Array) && !(dst instanceof Uint8Array) && !(dst instanceof Int8Array) && src._elementSize === 4) {
+            const avail = Math.floor(availableSrcBytes / 4);
+            const n = Math.min(Math.floor(sizeBytes / dst.BYTES_PER_ELEMENT), dst.length, avail);
+            const f32 = new Float32Array(src._buffer, src._offset * 4, n);
+            const isInt = !(dst instanceof Float64Array);
+            for (let i = 0; i < n; i++) dst[i] = isInt ? Math.trunc(f32[i]) : f32[i];
+            this._counters.memcpyD2HBytes += n * dst.BYTES_PER_ELEMENT;
+            break;
+          } else if (ArrayBuffer.isView(dst)) {
             const dstU8 = new Uint8Array(dst.buffer, dst.byteOffset);
             dstU8.set(srcU8.subarray(0, copyLen));
           } else if (Array.isArray(dst)) {
@@ -852,6 +945,9 @@
         const self = this;
         const proxy = new Proxy(raw, {
           get(target, prop, receiver) {
+            if (prop === '__raw') return target;
+            if (prop === 'get') return (i) => receiver[i];
+            if (prop === 'set') return (i, v) => { receiver[i] = v; };
             if (typeof prop === 'string' && /^\d+$/.test(prop)) {
               const idx = parseInt(prop, 10);
               if (idx < 0 || idx >= target.length) {
@@ -901,6 +997,9 @@
           const rowIdx = i;
           const rowProxy = new Proxy(rawRow, {
             get(target, prop, receiver) {
+              if (prop === '__raw') return target;
+              if (prop === 'get') return (i) => receiver[i];
+              if (prop === 'set') return (i, v) => { receiver[i] = v; };
               if (typeof prop === 'string' && /^\d+$/.test(prop)) {
                 const colIdx = parseInt(prop, 10);
                 self._counters.recordSharedLoad((rowIdx * c + colIdx) * 4);
@@ -994,132 +1093,50 @@
    * Since JS is single-threaded, these are inherently atomic.
    */
 
-  function atomicAdd(ptr, index, val, counters) {
+  /**
+   * Generic atomic read-modify-write with value semantics.
+   * Works on global DevicePointers (dense or sparse), dynamic SharedMemory and
+   * static __shared__ arrays (bypasses the race detector: atomics never race).
+   */
+  function atomicRMW(ptr, index, counters, fn, flops) {
     counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
     let old;
-    if (ptr instanceof SharedMemory) {
+    const raw = ptr && ptr.__raw;
+    if (raw) {
+      if (index < 0 || index >= raw.length) throw new RangeError('SharedMemory static array OOB atomic at index ' + index + ' (size ' + raw.length + ')');
+      counters.recordSharedLoad(index * 4);
+      counters.recordSharedStore(index * 4);
+      old = raw[index];
+      raw[index] = fn(old);
+    } else if (ptr instanceof SharedMemory) {
       old = ptr._f32[index];
-      ptr._f32[index] = old + val;
+      ptr._f32[index] = fn(old);
     } else {
-      old = ptr._f32[absIdx];
-      ptr._f32[absIdx] = old + val;
+      if (ptr._isFreed) throw new Error('cudaErrorIllegalAddress: atomic on freed device pointer');
+      const absIdx = ptr._offset + index;
+      if (!ptr._sparseBuffer && (absIdx < 0 || absIdx >= ptr._allocLength)) {
+        throw new RangeError('DevicePointer OOB atomic: index ' + absIdx + ' (alloc size ' + ptr._allocLength + ')');
+      }
+      old = ptr._rawGet(index);
+      ptr._rawSet(index, fn(old));
+      if (counters.recordGlobalLoad) {
+        counters.recordGlobalLoad(ptr._elementSize, absIdx * ptr._elementSize);
+        counters.recordGlobalStore(ptr._elementSize, absIdx * ptr._elementSize);
+      }
     }
-    counters.recordFlop(1);
+    if (flops) counters.recordFlop(flops);
     return old;
   }
 
-  function atomicSub(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._f32[index];
-      ptr._f32[index] = old - val;
-    } else {
-      old = ptr._f32[absIdx];
-      ptr._f32[absIdx] = old - val;
-    }
-    return old;
-  }
-
-  function atomicMax(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      ptr._i32[index] = Math.max(old, val);
-    } else {
-      old = ptr._i32[absIdx];
-      ptr._i32[absIdx] = Math.max(old, val);
-    }
-    return old;
-  }
-
-  function atomicMin(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      ptr._i32[index] = Math.min(old, val);
-    } else {
-      old = ptr._i32[absIdx];
-      ptr._i32[absIdx] = Math.min(old, val);
-    }
-    return old;
-  }
-
-  function atomicCAS(ptr, index, compare, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      if (old === compare) ptr._i32[index] = val;
-    } else {
-      old = ptr._i32[absIdx];
-      if (old === compare) ptr._i32[absIdx] = val;
-    }
-    return old;
-  }
-
-  function atomicExch(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._f32[index];
-      ptr._f32[index] = val;
-    } else {
-      old = ptr._f32[absIdx];
-      ptr._f32[absIdx] = val;
-    }
-    return old;
-  }
-
-  function atomicAnd(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      ptr._i32[index] = old & val;
-    } else {
-      old = ptr._i32[absIdx];
-      ptr._i32[absIdx] = old & val;
-    }
-    return old;
-  }
-
-  function atomicOr(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      ptr._i32[index] = old | val;
-    } else {
-      old = ptr._i32[absIdx];
-      ptr._i32[absIdx] = old | val;
-    }
-    return old;
-  }
-
-  function atomicXor(ptr, index, val, counters) {
-    counters.recordAtomic(ptr._allocId || 0, index);
-    const absIdx = (ptr._offset !== undefined) ? ptr._offset + index : index;
-    let old;
-    if (ptr instanceof SharedMemory) {
-      old = ptr._i32[index];
-      ptr._i32[index] = old ^ val;
-    } else {
-      old = ptr._i32[absIdx];
-      ptr._i32[absIdx] = old ^ val;
-    }
-    return old;
-  }
+  const atomicAdd = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => o + v, 1);
+  const atomicSub = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => o - v, 1);
+  const atomicMax = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => (v > o ? v : o), 0);
+  const atomicMin = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => (v < o ? v : o), 0);
+  const atomicCAS = (ptr, i, cmp, v, c) => atomicRMW(ptr, i, c, (o) => (o === cmp ? v : o), 0);
+  const atomicExch = (ptr, i, v, c) => atomicRMW(ptr, i, c, () => v, 0);
+  const atomicAnd = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => (o | 0) & (v | 0), 0);
+  const atomicOr = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => (o | 0) | (v | 0), 0);
+  const atomicXor = (ptr, i, v, c) => atomicRMW(ptr, i, c, (o) => (o | 0) ^ (v | 0), 0);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Warp-Level Primitives
@@ -1464,6 +1481,7 @@
       }
 
       counters.blocksLaunched += totalBlocks;
+      counters.kernelLaunches = (counters.kernelLaunches || 0) + 1;
       counters.threadsLaunched += totalBlocks * threadsPerBlock;
 
       // Pre-allocated shared memory size (minimum 256 bytes)
@@ -1642,8 +1660,6 @@
 
               const __syncthreads = function* () {
                 counters.syncthreadsCount++;
-                counters.flushSharedBankAccesses();
-                counters.flushWarpGlobalAccesses();
                 yield { type: 'sync' };
               };
 
@@ -1839,6 +1855,8 @@
                     diag.push(errDiag);
                     self._lastError = errDiag.message;
                   }
+                  counters.flushSharedBankAccesses();
+                  counters.flushWarpGlobalAccesses();
                   if (sharedMem && sharedMem._raceDetector) {
                     sharedMem._raceDetector.advanceBarrier();
                   }
@@ -1884,7 +1902,7 @@
       this.nranks = nranks;
       this.rank = rank;
       this._runtime = runtime;
-      this.algorithm = options.algorithm || null;
+      this.algorithm = options.algorithm || 'ring';
       this.deviceIds = options.deviceIds || options.ranks || null;
       this.commId = options.commId || 0;
       this._clique = clique || {
@@ -1895,6 +1913,7 @@
         pendingAllGather: [],
         pendingReduce: []
       };
+      if (runtime && runtime._regClique) runtime._regClique(this._clique);
     }
   }
 
@@ -1997,6 +2016,48 @@
     }
 
     /** ncclCommInitAll */
+    _regClique(c) { (this._allCliques || (this._allCliques = new Set())).add(c); }
+
+    /** Find collectives that some ranks entered and others never did (would hang a real cluster). */
+    findPendingDesync() {
+      const issues = [];
+      const cliques = new Set(this._allCliques || []);
+      if (this._defaultClique) cliques.add(this._defaultClique);
+      const kinds = [['pendingAllReduce', 'ncclAllReduce'], ['pendingBroadcast', 'ncclBroadcast'], ['pendingReduceScatter', 'ncclReduceScatter'],
+        ['pendingAllGather', 'ncclAllGather'], ['pendingReduce', 'ncclReduce']];
+      cliques.forEach((cl) => {
+        kinds.forEach(([key, name]) => {
+          const arr = cl[key];
+          if (!arr) return;
+          const arrived = [], missing = [];
+          for (let q = 0; q < cl.nranks; q++) (arr[q] ? arrived : missing).push(q);
+          if (arrived.length && missing.length) {
+            issues.push(name + ' deadlock: rank(s) [' + missing.join(', ') + '] never called it, so rank(s) [' + arrived.join(', ') +
+              '] would block forever (communicator of ' + cl.nranks + ' ranks)');
+          }
+        });
+      });
+      const p2p = (this._stagedP2P || []).filter(Boolean);
+      if (p2p.length) {
+        const sends = p2p.filter((o) => o.type === 'send').length, recvs = p2p.filter((o) => o.type === 'recv').length;
+        issues.push('unmatched point-to-point: ' + sends + ' ncclSend and ' + recvs + ' ncclRecv left without a partner (would hang)');
+      }
+      return issues;
+    }
+
+    /** Cross-rank argument check when all ranks have arrived at a staged collective. */
+    _checkStaged(name, staged) {
+      const first = staged[0];
+      for (let q = 1; q < staged.length; q++) {
+        const o = staged[q];
+        for (const f of ['count', 'op', 'datatype', 'root']) {
+          if (first[f] !== undefined && o[f] !== undefined && first[f] !== o[f]) {
+            throw new Error('NcclDesyncError: ' + name + ' argument mismatch between rank 0 and rank ' + q + ': ' + f + ' ' + first[f] + ' vs ' + o[f] + ' (a real cluster would hang or corrupt data)');
+          }
+        }
+      }
+    }
+
     ncclCommInitAll(comms, nranks, options = {}) {
       const clique = {
         nranks,
@@ -2047,6 +2108,7 @@
         }
         if (ready) {
           const staged = clique.pendingAllReduce;
+          this._checkStaged("ncclAllReduce", staged.filter(Boolean));
           clique.pendingAllReduce = [];
           const allSends = staged.map(s => s.sendbuf);
           const allRecvs = staged.map(s => s.recvbuf);
@@ -2138,6 +2200,7 @@
         }
         if (ready) {
           const staged = clique.pendingBroadcast;
+          this._checkStaged("ncclBroadcast", staged.filter(Boolean));
           clique.pendingBroadcast = [];
           const allSends = staged.map(s => s.sendbuf);
           const allRecvs = staged.map(s => s.recvbuf);
@@ -2204,6 +2267,7 @@
         }
         if (ready) {
           const staged = clique.pendingReduceScatter;
+          this._checkStaged("ncclReduceScatter", staged.filter(Boolean));
           clique.pendingReduceScatter = [];
           const allSends = staged.map(s => s.sendbuf);
           const allRecvs = staged.map(s => s.recvbuf);
@@ -2296,6 +2360,7 @@
         }
         if (ready) {
           const staged = clique.pendingAllGather;
+          this._checkStaged("ncclAllGather", staged.filter(Boolean));
           clique.pendingAllGather = [];
           const allSends = staged.map(s => s.sendbuf);
           const allRecvs = staged.map(s => s.recvbuf);
@@ -2364,6 +2429,7 @@
         }
         if (ready) {
           const staged = clique.pendingReduce;
+          this._checkStaged("ncclReduce", staged.filter(Boolean));
           clique.pendingReduce = [];
           const allSends = staged.map(s => s.sendbuf);
           const allRecvs = staged.map(s => s.recvbuf);
@@ -2593,6 +2659,7 @@
         c.flushSharedBankAccesses();
         agg.threadsLaunched += c.threadsLaunched;
         agg.blocksLaunched += c.blocksLaunched;
+        agg.kernelLaunches += c.kernelLaunches || 0;
         agg.globalLoads += c.globalLoads;
         agg.globalStores += c.globalStores;
         agg.globalLoadBytes += c.globalLoadBytes;
@@ -2613,6 +2680,7 @@
         agg.ncclOps += c.ncclOps;
         agg.flopCount += c.flopCount;
       }
+      agg._deviceTimesMs = this._devices.map((d) => d.counters.estimatedTimeMs);
       agg.perDevice = this._devices.map((d, idx) => ({
         deviceId: idx,
         ...d.counters.toJSON()
@@ -2833,6 +2901,27 @@
       if (last) return String(last);
       return 'cudaErrorLaunchFailure';
     }
+
+    // ── Instrumentation hooks emitted by the transpiler ──
+
+    /** Called when the host program returns: surfaces collectives that would hang on real hardware. */
+    __endOfProgram() {
+      if (!this._multiGPU || !this._multiGPU.findPendingDesync) return;
+      for (const msg of this._multiGPU.findPendingDesync()) {
+        this._launcher._diagnostics.push({ type: 'error', category: 'NcclDesyncError', message: 'NcclDesyncError: ' + msg });
+      }
+    }
+
+
+    _activeCounters() {
+      return this._multiGPU ? this._multiGPU.getCounters(this._currentDevice) : this._counters;
+    }
+
+    /** Count n floating-point operations */
+    __f(n) { this._activeCounters().recordFlop(n); }
+
+    /** Record a branch condition (returns it unchanged) */
+    __br(id, cond) { this._activeCounters().recordBranch(id, !!cond); return cond; }
 
     // ── Launch API ──
 

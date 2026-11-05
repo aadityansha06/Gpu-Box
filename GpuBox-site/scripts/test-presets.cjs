@@ -71,7 +71,7 @@ for (const p of PRESETS) {
   // but does not abort the whole program), so we judge "caught" purely by thrown
   // diagnostics, not by the absence of the trailing printf line.
   const bugCaught = thrown.some((m) =>
-    /OOB|out.?of.?bounds|illegal address|diverg|Barrier|race/i.test(m));
+    /OOB|out.?of.?bounds|illegal address|diverg|Barrier|race|desync|deadlock/i.test(m));
 
   let ok;
   if (p.expect === null) {

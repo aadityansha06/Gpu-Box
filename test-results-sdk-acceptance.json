@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-28T11:20:28.065Z",
+  "timestamp": "2026-11-05T14:21:13.559Z",
   "totalTests": 6,
   "passedTests": 6,
   "failedTests": 0,
@@ -8,13 +8,13 @@
       "id": "B1",
       "name": "Packaging (npm pack, clean install in temp dir, quick-start verification)",
       "status": "PASS",
-      "durationMs": 1556
+      "durationMs": 1768
     },
     {
       "id": "B2",
       "name": "Integrator UI Feasibility (browser-minimal-ui renders 16 GPUs & traffic matrix with public API)",
       "status": "PASS",
-      "durationMs": 23
+      "durationMs": 34
     },
     {
       "id": "B3",
@@ -32,13 +32,13 @@
       "id": "B5",
       "name": "Events & Result Schema (event ordering on 16-rank AllReduce, deep equal JSON schema 1.0.0)",
       "status": "PASS",
-      "durationMs": 22
+      "durationMs": 29
     },
     {
       "id": "B6",
       "name": "Docs are executable & CSP is honest (executes recipes, documents CSP requirements)",
       "status": "PASS",
-      "durationMs": 18
+      "durationMs": 17
     }
   ]
 }

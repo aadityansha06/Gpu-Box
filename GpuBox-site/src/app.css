@@ -506,3 +506,49 @@ table.data-table td.mono {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gold-dark);
 }
+
+/* ───────────────────────── Premium layer ───────────────────────── */
+.grid { display: grid; gap: 1.25rem; }
+.grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1040px) { .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .grid--2, .grid--3, .grid--4 { grid-template-columns: 1fr; } }
+
+.mono { font-family: var(--font-mono); font-size: 0.82rem; }
+
+.card {
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.055) 0%, rgba(212, 175, 55, 0) 38%),
+    var(--bg-card);
+  box-shadow: inset 0 1px 0 rgba(245, 215, 127, 0.07);
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245, 215, 127, 0.45), transparent);
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.card:hover::before { opacity: 1; }
+.card h3 { font-size: 1.08rem; margin-bottom: 0.55rem; }
+.card p { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.65; }
+
+.tile-num {
+  font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.18em;
+  color: var(--gold-primary); margin-bottom: 1.1rem; display: inline-block;
+  padding-bottom: 0.45rem; border-bottom: 1px solid var(--gold-border);
+}
+
+.fine-print { margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+.fine-print code { color: var(--gold-light); font-family: var(--font-mono); }
+
+.report-wrap { flex: 1; overflow: auto; background: #000; max-height: 640px; }
+
+/* Section rhythm: hairline dividers with a gold centre glow */
+.section { position: relative; }
+.section + .section::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: min(880px, 80%); height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.4), transparent);
+}

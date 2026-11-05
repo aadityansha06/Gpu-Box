@@ -20,6 +20,8 @@
     "test:negative": "node ../scripts/test-negative.js",
     "test:numerical": "node ../scripts/test-numerical-references.js",
     "test:real-gpu": "python ../scripts/test-real-gpu.py",
+    "test:stress": "node ../scripts/stress-engine.js",
+    "test:gpu-parity": "node ../scripts/gpu-parity.js",
     "dev": "rollup -c rollup.config.js --watch",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"

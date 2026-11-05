@@ -7,6 +7,8 @@
   import MemoryBankGrid from '../lib/MemoryBankGrid.svelte';
   import CodeEditor from '../lib/CodeEditor.svelte';
   import EnterpriseDiagrams from '../lib/EnterpriseDiagrams.svelte';
+  import MetricsPanel from '../lib/MetricsPanel.svelte';
+  import parity from '../lib/parity.json';
 
   let canvasRef;
   let stop3D;
@@ -24,7 +26,8 @@
   let rawCounters = null;
   let telemetry = null;
   let executionTimeMs = 0;
-  let activeTab = 'terminal';
+  let activeTab = 'report';
+  let profileSpec = null;
 
   let pkgTab = 'npm';
   const installCommands = {
@@ -47,7 +50,7 @@
     { id: 'H100', label: 'NVIDIA H100 SXM5 (80GB, 3350 GB/s)' },
     { id: 'RTX 4090', label: 'NVIDIA RTX 4090 (24GB, 1008 GB/s)' },
     { id: 'RTX 4050 Laptop', label: 'NVIDIA RTX 4050 Laptop (6GB, 192 GB/s, Hardware Verified)' },
-    { id: 'RTX 5060 Ti', label: 'NVIDIA RTX 5060 Ti (sm_120 [TO VERIFY])' },
+    { id: 'RTX 5060 Ti', label: 'NVIDIA RTX 5060 Ti (16GB, projected specs)' },
     { id: 'RTX 3090', label: 'NVIDIA RTX 3090 (24GB, 936 GB/s)' },
     { id: 'V100', label: 'NVIDIA Tesla V100 (16GB, 900 GB/s)' }
   ];
@@ -58,6 +61,9 @@
     if (canvasRef) {
       stop3D = startHero3D(canvasRef);
     }
+    // Run the default example once so the report is alive when the visitor scrolls to it.
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 600));
+    idle(() => handleRun());
   });
 
   onDestroy(() => {
@@ -96,6 +102,7 @@
       runOutput = res.output || (res.ok ? 'Kernel execution completed successfully (no console output).' : '');
       runErrors = res.errors || [];
       rawCounters = res.counters;
+      profileSpec = res.profileSpec;
       telemetry = formatCounters(res.counters);
 
       if (res.ok && runErrors.length === 0) {
@@ -141,13 +148,13 @@
     </div>
 
     <div class="container hero__content">
-      <div class="badge">Enterprise CUDA Pre-Validation Standard</div>
+      <div class="badge">CUDA pre-flight for AI teams</div>
       <h1>
-        Eliminate Cloud GPU Waste.
-        <span class="gold-text">Pre-Validate CUDA in the Browser.</span>
+        Catch the CUDA bug
+        <span class="gold-text">before it costs a GPU hour.</span>
       </h1>
       <p class="lead">
-        The browser-native execution and verification engine for parallel software engineering teams. Transpile supported CUDA C++, identify 32-bank memory serialization hazards, and validate 1 to 16 GPU cluster collectives client-side before burning compute budget on physical silicon.
+        Run real CUDA C++ and multi-GPU NCCL code in your browser. Gpubox tells you what the hardware would do: the bytes moved at every level of memory, the FLOPs executed, the bank conflicts, the divergence, the deadlock. Nothing leaves your machine, and results match a physical RTX 4050.
       </p>
 
       <div class="hero__actions">
@@ -171,11 +178,28 @@
 
       <div class="hero__chip">
         <span class="hero__chip-dot"></span>
-        <span><strong>175 / 175</strong> Automated Tests Passing</span>
+        <span><strong>11 / 11</strong> kernels match a physical RTX 4050</span>
         <span class="hero__chip-sep">&bull;</span>
-        <span>Bit-Exact on NVIDIA RTX 4050 Laptop GPU</span>
+        <span><strong>205</strong> automated checks</span>
         <span class="hero__chip-sep">&bull;</span>
-        <span>100% Zero-Data-Egress Security</span>
+        <span>Zero data egress</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- What every run reports -->
+  <section class="section" id="report">
+    <div class="container">
+      <div class="section__head">
+        <span class="section__kicker">What you get from every run</span>
+        <h2>Not just "it ran". Exactly what the GPU would have done.</h2>
+        <p>Every execution produces a profiler-style report you can act on before you ever touch hardware.</p>
+      </div>
+      <div class="grid grid--4 report-tiles">
+        <div class="card"><div class="tile-num">01</div><h3>Data movement</h3><p>Host to device, global reads and writes, shared memory, and GPU to GPU interconnect bytes, each counted separately and charged per 32-byte DRAM sector.</p></div>
+        <div class="card"><div class="tile-num">02</div><h3>Compute executed</h3><p>FP32 operations and transcendental calls counted per thread, with arithmetic intensity and a memory-bound or compute-bound verdict for the GPU you pick.</p></div>
+        <div class="card"><div class="tile-num">03</div><h3>Hazards, located</h3><p>Out-of-bounds access, shared-memory races, divergent barriers, bank conflicts, uncoalesced loads, each with kernel, block and thread coordinates.</p></div>
+        <div class="card"><div class="tile-num">04</div><h3>Cluster behaviour</h3><p>1 to 16 virtual GPUs with ring collectives, per-rank traffic, interconnect time, and a deadlock report when a rank skips a collective.</p></div>
       </div>
     </div>
   </section>
@@ -222,8 +246,8 @@
     <div class="container">
       <div class="section__head">
         <span class="section__kicker">Live Interactive Sandbox</span>
-        <h2>Try Gpubox in Your Browser</h2>
-        <p>Select a preset algorithm or paste supported CUDA C++ code below to execute it client-side.</p>
+        <h2>Run it. Break it. Read the report.</h2>
+        <p>Seventeen working examples, from SAXPY to an 8-GPU gradient AllReduce, plus deliberate bugs that Gpubox catches. Edit anything, or paste your own kernel.</p>
       </div>
 
       <div class="playground-card">
@@ -304,10 +328,16 @@
             <div class="pane-header">
               <div class="pane-header__tabs">
                 <button
+                  class="pane-tab {activeTab === 'report' ? 'pane-tab--active' : ''}"
+                  on:click={() => activeTab = 'report'}
+                >
+                  GPU Report
+                </button>
+                <button
                   class="pane-tab {activeTab === 'terminal' ? 'pane-tab--active' : ''}"
                   on:click={() => activeTab = 'terminal'}
                 >
-                  Console & Telemetry
+                  Console
                   {#if runStatus === 'PASS'}
                     <span class="tab-dot tab-dot--pass"></span>
                   {:else if runStatus === 'FAIL' || runStatus === 'ERROR'}
@@ -332,7 +362,11 @@
               </div>
             </div>
 
-            {#if activeTab === 'terminal'}
+            {#if activeTab === 'report'}
+              <div class="report-wrap">
+                <MetricsPanel counters={rawCounters} spec={profileSpec} devices={selectedDevices} profileName={selectedProfile} />
+              </div>
+            {:else if activeTab === 'terminal'}
               <!-- Terminal output -->
               <div class="terminal-area">
                 {#if runErrors.length > 0}
@@ -437,90 +471,76 @@
   <section class="section" id="benchmarks">
     <div class="container">
       <div class="section__head">
-        <span class="section__kicker">Hardware Verification</span>
-        <h2>Physically Verified on NVIDIA RTX 4050 Laptop GPU</h2>
-        <p>Gpubox outputs have been compared bit-for-bit against live execution on physical Ada Lovelace NVIDIA hardware via NVRTC and CUDA driver APIs.</p>
+        <span class="section__kicker">Hardware verification</span>
+        <h2>Same kernels, same inputs, run on a physical RTX 4050</h2>
+        <p>Every row is the same CUDA source compiled with NVRTC and executed on a real RTX 4050 Laptop GPU (sm_89), then compared element by element with the simulator's output. Error is relative; the small residue is JavaScript double intermediates versus GPU single precision.</p>
       </div>
 
       <div class="benchmark-table-wrap">
         <table class="benchmark-table">
           <thead>
             <tr>
-              <th>Kernel Name</th>
-              <th>Physical RTX 4050 Execution</th>
-              <th>Gpubox Simulation</th>
-              <th>Output Match</th>
-              <th>Tolerance Mode</th>
+              <th>Kernel</th>
+              <th>Max relative error</th>
+              <th>FLOPs counted</th>
+              <th>Global bytes</th>
+              <th>Bank conflicts</th>
+              <th>Verdict</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><code>vecAdd</code> (Vector Addition)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Float32 (1e-5)</td>
-            </tr>
-            <tr>
-              <td><code>l2Norm</code> (L2 Reduction & Normalization)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Float32 (1e-5)</td>
-            </tr>
-            <tr>
-              <td><code>matMulTiled</code> (Tiled Shared Memory GEMM)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Float32 (1e-5)</td>
-            </tr>
-            <tr>
-              <td><code>histogram256</code> (Atomic Binning)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Integer Atomics</td>
-            </tr>
-            <tr>
-              <td><code>transposeCoalesced</code> (Padded Transpose)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Float32 (1e-5)</td>
-            </tr>
-            <tr>
-              <td><code>softmaxForward</code> (Karpathy llm.c Softmax)</td>
-              <td>Verified via NVRTC & CUDA Driver</td>
-              <td>Bit-Exact Simulation</td>
-              <td><span class="badge badge--success">PASS (Bit-Exact)</span></td>
-              <td>Float32 (1e-5)</td>
-            </tr>
+            {#each parity.results as r}
+              <tr>
+                <td><code>{r.name}</code></td>
+                <td class="mono">{r.maxRelErr === 0 ? 'exact' : r.maxRelErr.toExponential(1)}</td>
+                <td class="mono">{r.simFlops.toLocaleString()}</td>
+                <td class="mono">{r.simGlobalBytes.toLocaleString()}</td>
+                <td class="mono">{r.simBankConflicts}</td>
+                <td><span class="badge badge--success">{r.status === 'PASS' ? 'MATCH' : r.status}</span></td>
+              </tr>
+            {/each}
           </tbody>
         </table>
       </div>
+      <p class="fine-print">Reproduce on your own NVIDIA GPU: <code>node scripts/gpu-parity.js</code>. Modeled kernel times are roofline estimates, typically within 2 to 3x on micro-kernels and tighter on bandwidth-bound ones.</p>
 
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-card__val">175 / 175</div>
-          <div class="stat-card__label">Automated Tests Passing</div>
-          <div class="stat-card__sub">88 benchmarks, 8 metrics, 31 negative, 9 numerical, 21 corpus, 18 acceptance</div>
+          <div class="stat-card__val">205</div>
+          <div class="stat-card__label">Automated checks passing</div>
+          <div class="stat-card__sub">175 regression + 30 engine stress tests (reductions, softmax, matmul, NCCL, compile errors)</div>
         </div>
         <div class="stat-card">
-          <div class="stat-card__val">6 / 6</div>
-          <div class="stat-card__label">Physical GPU Verifications</div>
-          <div class="stat-card__sub">Ada Lovelace RTX 4050 Laptop GPU (AD107, sm_89, Driver 617.42)</div>
+          <div class="stat-card__val">{parity.passed} / {parity.kernelsTested}</div>
+          <div class="stat-card__label">Kernels matching physical GPU</div>
+          <div class="stat-card__sub">Ada Lovelace RTX 4050 Laptop GPU (AD107, sm_89)</div>
         </div>
         <div class="stat-card">
-          <div class="stat-card__val">~57 KB</div>
-          <div class="stat-card__label">CDN Transfer Size</div>
-          <div class="stat-card__sub">Brotli-compressed bundle loads in under 20ms</div>
+          <div class="stat-card__val">16</div>
+          <div class="stat-card__label">Virtual GPUs, ring collectives</div>
+          <div class="stat-card__sub">AllReduce, AllGather, ReduceScatter, AllToAll, P2P with deadlock detection</div>
         </div>
         <div class="stat-card">
           <div class="stat-card__val">$0</div>
           <div class="stat-card__label">Provider Server Spend</div>
           <div class="stat-card__sub">100% client-side compute execution</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Honest boundaries -->
+  <section class="section" id="limits">
+    <div class="container">
+      <div class="section__head">
+        <span class="section__kicker">Know the boundaries</span>
+        <h2>What Gpubox is not</h2>
+        <p>A pre-flight check is only useful if you know where it stops. These are the limits, stated plainly.</p>
+      </div>
+      <div class="grid grid--3 limits-grid">
+        <div class="card"><h3>Not a replacement for the real GPU</h3><p>Gpubox filters logic, memory and collective bugs early. Final performance tuning, tensor cores and driver behaviour still need silicon.</p></div>
+        <div class="card"><h3>Rejected, never faked</h3><p>Inline PTX, WMMA tensor cores, dynamic parallelism and CUDA Graphs are refused at compile time with a clear error instead of silently mis-simulated.</p></div>
+        <div class="card"><h3>Numerics and timing</h3><p>Arithmetic runs in JavaScript doubles and is stored as FP32, so results differ from a GPU at the 1e-7 level. Integers in device memory are exact up to 2<sup>24</sup>. Time is a roofline model, not a cycle-accurate one.</p></div>
       </div>
     </div>
   </section>

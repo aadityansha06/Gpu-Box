@@ -267,7 +267,18 @@ export function startHero3D(canvasEl) {
     }
 
     renderer.render(scene, camera);
-    rafId = requestAnimationFrame(animate);
+    rafId = visible ? requestAnimationFrame(animate) : 0;
+  }
+  // Stop rendering while the hero is scrolled out of view (saves GPU/battery).
+  let visible = true;
+  let io = null;
+  if (typeof IntersectionObserver !== 'undefined') {
+    io = new IntersectionObserver((entries) => {
+      const now = entries[0].isIntersecting;
+      if (now && !visible) { visible = true; rafId = requestAnimationFrame(animate); }
+      else visible = now;
+    }, { threshold: 0 });
+    io.observe(canvasEl);
   }
   animate();
 
@@ -280,6 +291,7 @@ export function startHero3D(canvasEl) {
   window.addEventListener('resize', onResize);
 
   return () => {
+    if (io) io.disconnect();
     cancelAnimationFrame(rafId);
     window.removeEventListener('resize', onResize);
     if (renderer) renderer.setAnimationLoop(null);

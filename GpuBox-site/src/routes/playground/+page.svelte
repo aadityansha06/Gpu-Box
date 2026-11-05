@@ -1,6 +1,8 @@
 <script>
   import { PRESETS } from '../../lib/presets.js';
   import { runCUDA, formatCounters, formatBytes, getGPUProfile } from '../../lib/engine.js';
+  import MetricsPanel from '../../lib/MetricsPanel.svelte';
+  import { onMount } from 'svelte';
   import MemoryBankGrid from '../../lib/MemoryBankGrid.svelte';
   import CodeEditor from '../../lib/CodeEditor.svelte';
 
@@ -19,7 +21,7 @@
   let telemetry = null;
   let profileSpec = null;
   let executionTimeMs = 0;
-  let activeTab = 'output';
+  let activeTab = 'hardware';
 
   let fileInputRef;
 
@@ -28,7 +30,7 @@
     { id: 'H100', name: 'NVIDIA H100 SXM5 (80GB, 3350 GB/s, Hopper)' },
     { id: 'RTX 4090', name: 'NVIDIA RTX 4090 (24GB, 1008 GB/s, Ada)' },
     { id: 'RTX 4050 Laptop', name: 'NVIDIA RTX 4050 Laptop (6GB, 192 GB/s, Ada - Hardware Verified)' },
-    { id: 'RTX 5060 Ti', name: 'NVIDIA RTX 5060 Ti (16GB, Blackwell - Projected)' },
+    { id: 'RTX 5060 Ti', name: 'NVIDIA RTX 5060 Ti (16GB, Blackwell, projected specs)' },
     { id: 'RTX 3090', name: 'NVIDIA RTX 3090 (24GB, 936 GB/s, Ampere)' },
     { id: 'V100', name: 'NVIDIA Tesla V100 (16GB, 900 GB/s, Volta)' },
     { id: 'T4', name: 'NVIDIA Turing T4 (16GB, 320 GB/s, Turing)' }
@@ -93,6 +95,8 @@
       isRunning = false;
     }
   }
+
+  onMount(() => { setTimeout(handleRun, 150); });
 
   function handleClear() {
     runOutput = '// Console cleared.';
@@ -304,7 +308,7 @@
           class="pg-tab {activeTab === 'hardware' ? 'pg-tab--active' : ''}"
           on:click={() => activeTab = 'hardware'}
         >
-          GPU Metrics
+          GPU Report
         </button>
 
         <button
@@ -363,28 +367,7 @@
         <!-- Tab 2: GPU Metrics & Hardware Specs -->
         {#if activeTab === 'hardware'}
           <div class="hardware-tab-view">
-            <div class="kpi-grid">
-              <div class="kpi-card">
-                <span class="kpi-label">Est. Execution Time</span>
-                <span class="kpi-val">{telemetry?.timeMs || '0.000 ms'}</span>
-                <span class="kpi-sub">{telemetry?.cycles || '0'} cycles</span>
-              </div>
-              <div class="kpi-card">
-                <span class="kpi-label">Compute Utilization</span>
-                <span class="kpi-val">{telemetry?.computeUtil || '0.00%'}</span>
-                <span class="kpi-sub">{telemetry?.flops || '0'} FLOPs</span>
-              </div>
-              <div class="kpi-card">
-                <span class="kpi-label">Memory Bandwidth Util</span>
-                <span class="kpi-val">{telemetry?.memUtil || '0.00%'}</span>
-                <span class="kpi-sub">{telemetry?.globalTransactions || '0'} transactions</span>
-              </div>
-              <div class="kpi-card">
-                <span class="kpi-label">Warp Occupancy</span>
-                <span class="kpi-val">{telemetry?.occupancy || '0.00%'}</span>
-                <span class="kpi-sub">{telemetry?.threads || '0'} threads / {telemetry?.blocks || '0'} blocks</span>
-              </div>
-            </div>
+            <MetricsPanel counters={rawCounters} spec={profileSpec} devices={selectedDevices} profileName={selectedProfile} />
 
             <div class="spec-section">
               <div class="spec-section__title">Active Hardware Specification Profile</div>

@@ -375,6 +375,371 @@ int main() {
 }`
   },
   {
+    id: "reduce_sum",
+    title: "Parallel Reduction",
+    blurb: "Shared-memory tree + atomicAdd, the pattern behind every sum and loss",
+    tag: "ML",
+    devices: 1,
+    expect: "sum = 2048.000000",
+    code: `// Parallel reduction: shared-memory tree + one atomicAdd per block
+#include <cstdio>
+
+__global__ void reduceSum(const float* in, float* out, int n) {
+    __shared__ float s[256];
+    int t = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + t;
+    s[t] = (i < n) ? in[i] : 0.0f;
+    __syncthreads();
+
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (t < stride) s[t] += s[t + stride];
+        __syncthreads();
+    }
+    if (t == 0) atomicAdd(out, s[0]);
+}
+
+int main() {
+    const int n = 4096;
+    float h_in[4096];
+    for (int i = 0; i < n; i++) h_in[i] = 0.5f;          // expected sum = 2048
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, n * sizeof(float));
+    cudaMalloc(&d_out, sizeof(float));
+    cudaMemcpy(d_in, h_in, n * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemset(d_out, 0, sizeof(float));
+
+    reduceSum<<<(n + 255) / 256, 256>>>(d_in, d_out, n);
+
+    float h_out = 0.0f;
+    cudaMemcpy(&h_out, d_out, sizeof(float), cudaMemcpyDeviceToHost);
+    printf("sum = %f (expected 2048.000000)\\n", h_out);
+    cudaFree(d_in);
+    cudaFree(d_out);
+    return 0;
+}`
+  },
+  {
+    id: "softmax",
+    title: "Softmax",
+    blurb: "Max-subtract, exp, normalise: the core of attention",
+    tag: "ML",
+    devices: 1,
+    expect: "row 3 probabilities sum to 1.000000",
+    code: `// Row-wise softmax: the core of every attention layer
+#include <cstdio>
+#include <math.h>
+
+__global__ void softmaxRows(const float* in, float* out, int cols) {
+    __shared__ float red[64];
+    int row = blockIdx.x, t = threadIdx.x;
+
+    float m = -1e30f;                                    // 1) row max (numerical stability)
+    for (int c = t; c < cols; c += blockDim.x) m = fmaxf(m, in[row * cols + c]);
+    red[t] = m;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (t < s) red[t] = fmaxf(red[t], red[t + s]);
+        __syncthreads();
+    }
+    m = red[0];
+    __syncthreads();
+
+    float sum = 0.0f;                                    // 2) sum of exp
+    for (int c = t; c < cols; c += blockDim.x) sum += expf(in[row * cols + c] - m);
+    red[t] = sum;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (t < s) red[t] += red[t + s];
+        __syncthreads();
+    }
+    sum = red[0];
+
+    for (int c = t; c < cols; c += blockDim.x)           // 3) normalise
+        out[row * cols + c] = expf(in[row * cols + c] - m) / sum;
+}
+
+int main() {
+    const int rows = 4, cols = 100;
+    float h[400];
+    for (int i = 0; i < rows * cols; i++) h[i] = (float)((i * 7) % 13) - 6.0f;
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, rows * cols * sizeof(float));
+    cudaMalloc(&d_out, rows * cols * sizeof(float));
+    cudaMemcpy(d_in, h, rows * cols * sizeof(float), cudaMemcpyHostToDevice);
+
+    softmaxRows<<<rows, 64>>>(d_in, d_out, cols);
+    cudaMemcpy(h, d_out, rows * cols * sizeof(float), cudaMemcpyDeviceToHost);
+
+    for (int r = 0; r < rows; r++) {
+        float s = 0.0f;
+        for (int c = 0; c < cols; c++) s += h[r * cols + c];
+        printf("row %d probabilities sum to %f\\n", r, s);
+    }
+    return 0;
+}`
+  },
+  {
+    id: "layernorm",
+    title: "LayerNorm",
+    blurb: "Two-pass mean/variance with rsqrtf, as in every transformer block",
+    tag: "ML",
+    devices: 1,
+    expect: "variance = 1.0000",
+    code: `// LayerNorm forward: mean/variance reduction + rsqrtf, as used in every transformer block
+#include <cstdio>
+#include <math.h>
+
+__global__ void layerNorm(const float* in, float* out, int cols) {
+    __shared__ float sh[32];
+    int row = blockIdx.x, t = threadIdx.x;
+
+    float s = 0.0f;
+    for (int c = t; c < cols; c += blockDim.x) s += in[row * cols + c];
+    sh[t] = s;
+    __syncthreads();
+    for (int k = 16; k > 0; k >>= 1) { if (t < k) sh[t] += sh[t + k]; __syncthreads(); }
+    float mean = sh[0] / cols;
+    __syncthreads();
+
+    float v = 0.0f;
+    for (int c = t; c < cols; c += blockDim.x) { float d = in[row * cols + c] - mean; v += d * d; }
+    sh[t] = v;
+    __syncthreads();
+    for (int k = 16; k > 0; k >>= 1) { if (t < k) sh[t] += sh[t + k]; __syncthreads(); }
+    float inv = rsqrtf(sh[0] / cols + 1e-5f);
+
+    for (int c = t; c < cols; c += blockDim.x) out[row * cols + c] = (in[row * cols + c] - mean) * inv;
+}
+
+int main() {
+    const int rows = 4, cols = 96;
+    float h[384];
+    for (int i = 0; i < rows * cols; i++) h[i] = (float)((i * 5) % 17) * 0.5f + (float)(i / cols);
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, rows * cols * sizeof(float));
+    cudaMalloc(&d_out, rows * cols * sizeof(float));
+    cudaMemcpy(d_in, h, rows * cols * sizeof(float), cudaMemcpyHostToDevice);
+    layerNorm<<<rows, 32>>>(d_in, d_out, cols);
+    cudaMemcpy(h, d_out, rows * cols * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float mean = 0.0f, var = 0.0f;
+    for (int c = 0; c < cols; c++) mean += h[c];
+    mean /= cols;
+    for (int c = 0; c < cols; c++) var += (h[c] - mean) * (h[c] - mean);
+    var /= cols;
+    printf("row 0 after LayerNorm: mean = %.4f, variance = %.4f\\n", mean, var);
+    return 0;
+}`
+  },
+  {
+    id: "prefix_scan",
+    title: "Prefix Scan",
+    blurb: "Hillis-Steele inclusive scan with ping-pong shared buffers",
+    tag: "Memory",
+    devices: 1,
+    expect: "scan[63] = 64.000000",
+    code: `// Inclusive prefix sum (Hillis-Steele) using ping-pong shared buffers
+#include <cstdio>
+
+__global__ void scan(const float* in, float* out, int n) {
+    __shared__ float bufA[64];
+    __shared__ float bufB[64];
+    int t = threadIdx.x;
+    bufA[t] = in[t];
+    __syncthreads();
+
+    float* src = bufA;
+    float* dst = bufB;
+    for (int offset = 1; offset < n; offset <<= 1) {
+        if (t >= offset) dst[t] = src[t] + src[t - offset];
+        else             dst[t] = src[t];
+        __syncthreads();
+        float* tmp = src; src = dst; dst = tmp;
+    }
+    out[t] = src[t];
+}
+
+int main() {
+    const int n = 64;
+    float h[64];
+    for (int i = 0; i < n; i++) h[i] = 1.0f;
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, n * sizeof(float));
+    cudaMalloc(&d_out, n * sizeof(float));
+    cudaMemcpy(d_in, h, n * sizeof(float), cudaMemcpyHostToDevice);
+    scan<<<1, 64>>>(d_in, d_out, n);
+    cudaMemcpy(h, d_out, n * sizeof(float), cudaMemcpyDeviceToHost);
+    printf("scan[0] = %f, scan[31] = %f, scan[63] = %f\\n", h[0], h[31], h[63]);
+    return 0;
+}`
+  },
+  {
+    id: "transpose_conflicts",
+    title: "Bank Conflicts: Transpose",
+    blurb: "See a 32-way conflict, pad the tile, watch it disappear",
+    tag: "Memory",
+    devices: 1,
+    expect: "transpose verified: 0 mismatches",
+    code: `// Matrix transpose through shared memory. Run it, then open the "32-Bank Memory" tab:
+// the [32][32] tile makes every column read hit the same bank (32-way conflict).
+// Change the tile to [32][33] (one padding column) and run again: conflicts drop to zero.
+#include <cstdio>
+
+__global__ void transpose(const float* in, float* out, int n) {
+    __shared__ float tile[32][32];
+    int x = blockIdx.x * 32 + threadIdx.x;
+    int y = blockIdx.y * 32 + threadIdx.y;
+    tile[threadIdx.y][threadIdx.x] = in[y * n + x];
+    __syncthreads();
+    x = blockIdx.y * 32 + threadIdx.x;
+    y = blockIdx.x * 32 + threadIdx.y;
+    out[y * n + x] = tile[threadIdx.x][threadIdx.y];
+}
+
+int main() {
+    const int n = 64;
+    float h_in[4096], h_out[4096];
+    for (int i = 0; i < n * n; i++) h_in[i] = (float)i;
+
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, n * n * sizeof(float));
+    cudaMalloc(&d_out, n * n * sizeof(float));
+    cudaMemcpy(d_in, h_in, n * n * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 block(32, 32);
+    dim3 grid(n / 32, n / 32);
+    transpose<<<grid, block>>>(d_in, d_out, n);
+    cudaMemcpy(h_out, d_out, n * n * sizeof(float), cudaMemcpyDeviceToHost);
+
+    int bad = 0;
+    for (int r = 0; r < n; r++)
+        for (int c = 0; c < n; c++)
+            if (h_out[c * n + r] != h_in[r * n + c]) bad++;
+    printf("transpose verified: %d mismatches\\n", bad);
+    return 0;
+}`
+  },
+  {
+    id: "ddp_allreduce",
+    title: "DDP Gradient AllReduce (8 GPUs)",
+    blurb: "Data-parallel step with ring ncclAllReduce and traffic accounting",
+    tag: "Multi-GPU",
+    devices: 8,
+    expect: "GPU 7 averaged gradient[0] = 4.500000",
+    code: `// Data-parallel training step on 8 virtual GPUs: every rank computes a local gradient,
+// then ncclAllReduce averages it. Check "Cluster & NCCL" for per-rank traffic and time.
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <cstdio>
+
+__global__ void localGradient(float* grad, int n, float rank) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) grad[i] = rank + 1.0f;                    // pretend gradient = rank + 1
+}
+
+int main() {
+    const int gpus = 8;
+    const int n = 1024;
+    ncclComm_t comms[8];
+    ncclCommInitAll(comms, gpus);
+
+    float *grad[8], *avg[8];
+    for (int r = 0; r < gpus; r++) {
+        cudaSetDevice(r);
+        cudaMalloc(&grad[r], n * sizeof(float));
+        cudaMalloc(&avg[r], n * sizeof(float));
+        localGradient<<<(n + 255) / 256, 256>>>(grad[r], n, (float)r);
+    }
+
+    for (int r = 0; r < gpus; r++) {
+        cudaSetDevice(r);
+        ncclAllReduce(grad[r], avg[r], n, ncclFloat, ncclAvg, comms[r], 0);
+    }
+
+    for (int r = 0; r < gpus; r += 7) {
+        cudaSetDevice(r);
+        float h[1024];
+        cudaMemcpy(h, avg[r], n * sizeof(float), cudaMemcpyDeviceToHost);
+        printf("GPU %d averaged gradient[0] = %f (expected 4.500000)\\n", r, h[0]);
+    }
+    return 0;
+}`
+  },
+  {
+    id: "bug_race",
+    title: "Bug: Shared-Memory Race",
+    blurb: "A missing __syncthreads() caught as a RAW hazard",
+    tag: "Debugging",
+    devices: 1,
+    expect: null,
+    code: `// BUG: a shared-memory read-after-write race. Thread t reads its neighbour's value
+// but there is no __syncthreads() between the write and the read.
+// Gpubox flags the hazard (RAW) before it silently corrupts results on real hardware.
+// Fix: add __syncthreads(); between the two statements.
+#include <cstdio>
+
+__global__ void neighbourSum(const float* in, float* out) {
+    __shared__ float s[64];
+    int t = threadIdx.x;
+    s[t] = in[t];
+    // missing __syncthreads();
+    out[t] = s[t] + s[(t + 1) % 64];
+}
+
+int main() {
+    float h[64];
+    for (int i = 0; i < 64; i++) h[i] = 1.0f;
+    float *d_in, *d_out;
+    cudaMalloc(&d_in, 64 * sizeof(float));
+    cudaMalloc(&d_out, 64 * sizeof(float));
+    cudaMemcpy(d_in, h, 64 * sizeof(float), cudaMemcpyHostToDevice);
+    neighbourSum<<<1, 64>>>(d_in, d_out);
+    cudaMemcpy(h, d_out, 64 * sizeof(float), cudaMemcpyDeviceToHost);
+    printf("out[0] = %f\\n", h[0]);
+    return 0;
+}`
+  },
+  {
+    id: "bug_nccl_desync",
+    title: "Bug: NCCL Deadlock",
+    blurb: "One rank skips a collective; the hang is reported instead of suffered",
+    tag: "Debugging",
+    devices: 4,
+    expect: null,
+    code: `// BUG: rank 3 forgets to join the collective (a classic cause of hung training jobs).
+// On a real cluster ranks 0-2 would block forever. Gpubox reports the deadlock instead.
+// Fix: let every rank call ncclAllReduce.
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <cstdio>
+
+int main() {
+    const int gpus = 4;
+    const int n = 256;
+    ncclComm_t comms[4];
+    ncclCommInitAll(comms, gpus);
+
+    float *send[4], *recv[4];
+    for (int r = 0; r < gpus; r++) {
+        cudaSetDevice(r);
+        cudaMalloc(&send[r], n * sizeof(float));
+        cudaMalloc(&recv[r], n * sizeof(float));
+        cudaMemset(send[r], 0, n * sizeof(float));
+    }
+
+    for (int r = 0; r < gpus - 1; r++) {                 // BUG: should be r < gpus
+        cudaSetDevice(r);
+        ncclAllReduce(send[r], recv[r], n, ncclFloat, ncclSum, comms[r], 0);
+    }
+    printf("AllReduce issued\\n");
+    return 0;
+}`
+  },
+  {
     id: "bug_oob",
     title: "Bug: Out-of-Bounds",
     blurb: "A missing bounds guard is caught with thread and block",
@@ -434,159 +799,6 @@ int main() {
     cudaDeviceSynchronize();
 
     printf("If you can read this line, the bug was NOT caught.\\n");
-    return 0;
-}`
-  },
-  {
-    id: "multi_gpu_nccl_8",
-    title: "8-GPU DGX Cluster",
-    blurb: "8-rank ring all-reduce with NVLink interconnect modeling",
-    tag: "Multi-GPU",
-    devices: 8,
-    expect: "GPU Rank 0: 16.000000",
-    code: `// 8-GPU DGX SuperPOD Ring AllReduce Simulation
-#include <cuda_runtime.h>
-#include <nccl.h>
-#include <cstdio>
-
-int main() {
-    int numGpus = 8;
-    int count = 64;
-    size_t bytes = count * sizeof(float);
-
-    printf("Initializing 8-GPU DGX Cluster (NVLink 600 GB/s Interconnect)...\\n");
-
-    ncclComm_t comms[8];
-    ncclCommInitAll(comms, numGpus);
-
-    float *d_send[8];
-    float *d_recv[8];
-    float h_send[64];
-    for (int i = 0; i < count; i++) h_send[i] = 2.0f;
-
-    // Allocate memory on each virtual GPU node and copy input shard
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        cudaMalloc(&d_send[r], bytes);
-        cudaMalloc(&d_recv[r], bytes);
-        cudaMemcpy(d_send[r], h_send, bytes, cudaMemcpyHostToDevice);
-    }
-
-    // Execute Native Ring AllReduce across all 8 ranks
-    printf("Invoking ncclAllReduce(sum) across 8 GPU ranks...\\n");
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        ncclAllReduce(d_send[r], d_recv[r], count, ncclFloat, ncclSum, comms[r], 0);
-    }
-
-    // Verify reduction output on each device (Expected: 8 * 2.0 = 16.0)
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        float h_recv[64];
-        cudaMemcpy(h_recv, d_recv[r], bytes, cudaMemcpyDeviceToHost);
-        printf("GPU Rank %d: %f (Expected: 16.000000)\\n", r, h_recv[0]);
-    }
-
-    return 0;
-}`
-  },
-  {
-    id: "multi_gpu_nccl_16",
-    title: "16-GPU Cluster Pod",
-    blurb: "16-node high-bandwidth ring collectives across virtual cluster",
-    tag: "Multi-GPU",
-    devices: 16,
-    expect: "GPU 0 reduced element 0: 16.000000",
-    code: `// 16-GPU Cluster Pod Simulation (Large-Scale NCCL Ring Collective)
-#include <cuda_runtime.h>
-#include <nccl.h>
-#include <cstdio>
-
-int main() {
-    int numGpus = 16;
-    int count = 64;
-    size_t bytes = count * sizeof(float);
-
-    printf("Initializing 16-GPU Cluster Pod (Topology: 16 Virtual Nodes)...\\n");
-
-    ncclComm_t comms[16];
-    ncclCommInitAll(comms, numGpus);
-
-    float *d_send[16];
-    float *d_recv[16];
-    float h_send[64];
-    for (int i = 0; i < count; i++) h_send[i] = 1.0f;
-
-    // Allocate memory across all 16 virtual devices
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        cudaMalloc(&d_send[r], bytes);
-        cudaMalloc(&d_recv[r], bytes);
-        cudaMemcpy(d_send[r], h_send, bytes, cudaMemcpyHostToDevice);
-    }
-
-    // Execute 16-Rank High-Bandwidth Ring AllReduce
-    printf("Executing 16-Rank Ring AllReduce across NVLink/NVSwitch fabric...\\n");
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        ncclAllReduce(d_send[r], d_recv[r], count, ncclFloat, ncclSum, comms[r], 0);
-    }
-
-    // Verify reduction output on each device (Expected: 16 * 1.0 = 16.0)
-    for (int r = 0; r < numGpus; r++) {
-        cudaSetDevice(r);
-        float h_recv[64];
-        cudaMemcpy(h_recv, d_recv[r], bytes, cudaMemcpyDeviceToHost);
-        printf("GPU %d reduced element 0: %f (Expected: 16.000000)\\n", r, h_recv[0]);
-    }
-
-    return 0;
-}`
-  },
-  {
-    id: "custom",
-    title: "Custom / Blank Code",
-    blurb: "Write or paste any supported CUDA C++ kernel logic",
-    tag: "Custom",
-    devices: 1,
-    expect: "h_c[1]  = 2.000000",
-    code: `// Custom CUDA C++ Kernel Template
-#include <cstdio>
-
-__global__ void customKernel(float* c, const float* a, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) {
-        c[i] = a[i] * 2.0f;
-    }
-}
-
-int main() {
-    int n = 256;
-    size_t bytes = n * sizeof(float);
-
-    float *d_a, *d_c;
-    cudaMalloc(&d_a, bytes);
-    cudaMalloc(&d_c, bytes);
-
-    float h_a[256];
-    for (int i = 0; i < n; i++) h_a[i] = 1.0f * i;
-
-    cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
-
-    dim3 block(64);
-    dim3 grid((n + block.x - 1) / block.x);
-    customKernel<<<grid, block>>>(d_c, d_a, n);
-    cudaDeviceSynchronize();
-
-    float h_c[256];
-    cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
-
-    printf("Custom Kernel Verified:\\n");
-    printf("  h_c[1]  = %f (Expected: 2.000000)\\n", h_c[1]);
-    printf("  h_c[10] = %f (Expected: 20.000000)\\n", h_c[10]);
-
-    cudaFree(d_a);
-    cudaFree(d_c);
     return 0;
 }`
   }

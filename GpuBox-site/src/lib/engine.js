@@ -4,6 +4,7 @@
 const SIM_BASE = '/sim';
 
 const DEP_ORDER = [
+  'acorn.js',
   'fp16-bf16.js',
   'race-detector.js',
   'sparse-memory.js',
@@ -228,5 +229,69 @@ export function formatCounters(c) {
     ncclOps: (c.ncclOps ?? 0).toLocaleString(),
     memcpyH2DBytes: formatBytes(c.memcpyH2DBytes ?? 0),
     memcpyD2HBytes: formatBytes(c.memcpyD2HBytes ?? 0),
+  };
+}
+
+/**
+ * Turns raw simulator counters into a "GPU report": where the bytes went, how much compute
+ * ran, what bounds the kernel, and plain-language findings.
+ */
+export function analyzeRun(c, spec, devices = 1) {
+  if (!c) return null;
+  const fmtN = (n) => (n >= 1e9 ? (n / 1e9).toFixed(2) + ' G' : n >= 1e6 ? (n / 1e6).toFixed(2) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(1) + ' K' : String(Math.round(n)));
+  const globalBytes = (c.globalLoadBytes || 0) + (c.globalStoreBytes || 0);
+  const sharedBytes = (c.sharedLoadBytes || 0) + (c.sharedStoreBytes || 0);
+  const movement = [
+    { key: 'h2d', label: 'Host → Device (PCIe)', bytes: c.memcpyH2DBytes || 0, tone: 'host' },
+    { key: 'd2h', label: 'Device → Host (PCIe)', bytes: c.memcpyD2HBytes || 0, tone: 'host' },
+    { key: 'gread', label: 'Global memory reads', bytes: c.globalLoadBytes || 0, tone: 'dram' },
+    { key: 'gwrite', label: 'Global memory writes', bytes: c.globalStoreBytes || 0, tone: 'dram' },
+    { key: 'shared', label: 'Shared memory traffic', bytes: sharedBytes, tone: 'shared' },
+    { key: 'link', label: devices > 1 ? 'GPU ↔ GPU interconnect' : 'GPU ↔ GPU interconnect', bytes: c.crossGpuBytes || 0, tone: 'link' }
+  ];
+  const maxBytes = Math.max(1, ...movement.map((m) => m.bytes));
+  movement.forEach((m) => { m.pct = (m.bytes / maxBytes) * 100; });
+
+  const flops = c.flopCount || 0;
+  const peakTF = (spec && (spec.peakTFLOPS || spec.fp32TFLOPS)) || 10;
+  const bwGBs = (spec && (spec.memBandwidthGBs || spec.memoryBandwidthGBs)) || 900;
+  const intensity = globalBytes > 0 ? flops / globalBytes : 0;
+  const balance = (peakTF * 1000) / bwGBs; // FLOP per byte needed to be compute-bound
+  const bound = flops === 0 && globalBytes === 0 ? 'idle' : intensity < balance ? 'memory-bound' : 'compute-bound';
+
+  const idealTx = Math.ceil(globalBytes / 32);
+  const coalescing = c.globalTransactions > 0 ? Math.min(1, idealTx / c.globalTransactions) : 1;
+  const sharedAccesses = (c.sharedLoads || 0) + (c.sharedStores || 0);
+  const conflictRate = sharedAccesses > 0 ? (c.bankConflicts || 0) / sharedAccesses : 0;
+
+  const tb = {};
+  const div = devices > 1 ? devices : 1; // aggregated counters sum per-device time; show the per-GPU average
+  Object.entries(c.timeBreakdownUs || {}).forEach(([k, v]) => { tb[k] = v / div; });
+  const timeParts = [
+    { key: 'launch', label: 'Launch overhead', us: tb.launch || 0 },
+    { key: 'dram', label: 'Global memory', us: tb.dram || 0 },
+    { key: 'compute', label: 'Compute', us: tb.compute || 0 },
+    { key: 'shared', label: 'Shared memory', us: tb.shared || 0 },
+    { key: 'atomics', label: 'Atomics', us: tb.atomics || 0 },
+    { key: 'barriers', label: 'Barriers', us: tb.barriers || 0 },
+    { key: 'interconnect', label: 'Interconnect', us: tb.interconnect || 0 }
+  ];
+  const maxUs = Math.max(1e-9, ...timeParts.map((t) => t.us));
+  timeParts.forEach((t) => { t.pct = (t.us / maxUs) * 100; });
+
+  const findings = [];
+  if (bound === 'memory-bound') findings.push({ level: 'info', text: `Memory-bound: ${intensity.toFixed(2)} FLOP/byte against a balance point of ${balance.toFixed(1)}. More arithmetic is free; fewer bytes are what speed this up.` });
+  if (bound === 'compute-bound') findings.push({ level: 'info', text: `Compute-bound: ${intensity.toFixed(1)} FLOP/byte exceeds the balance point of ${balance.toFixed(1)}.` });
+  if (c.globalTransactions > 0 && coalescing < 0.7) findings.push({ level: 'warn', text: `Uncoalesced global access: ${(coalescing * 100).toFixed(0)}% efficiency (${c.globalTransactions.toLocaleString()} 32-byte transactions for ${idealTx.toLocaleString()} ideal). Make neighbouring threads touch neighbouring addresses.` });
+  if ((c.bankConflicts || 0) > 0) findings.push({ level: 'warn', text: `${c.bankConflicts.toLocaleString()} shared-memory bank conflicts (${(conflictRate * 100).toFixed(0)}% of accesses). Pad the tile ([32][33]) or change the access stride.` });
+  if ((c.divergentBranches || 0) > 0) findings.push({ level: 'warn', text: `${c.divergentBranches.toLocaleString()} divergent branch instances: threads in one warp took different paths and ran serially.` });
+  if ((c.atomicMaxContention || 0) > 32) findings.push({ level: 'warn', text: `Atomic hot-spot: one address was updated ${c.atomicMaxContention.toLocaleString()} times. Privatise in shared memory first.` });
+  if ((c.occupancy || 0) < 0.25 && (c.threadsLaunched || 0) > 0) findings.push({ level: 'info', text: `Low occupancy (${((c.occupancy || 0) * 100).toFixed(1)}%): the launch is too small to fill this GPU.` });
+  if ((c.memcpyH2DBytes || 0) + (c.memcpyD2HBytes || 0) > 0 && globalBytes > 0 && (c.memcpyH2DBytes + c.memcpyD2HBytes) > globalBytes * 4) findings.push({ level: 'info', text: 'Host transfers dwarf on-device traffic: the PCIe copy, not the kernel, dominates this program.' });
+  if (!findings.length) findings.push({ level: 'good', text: 'No access-pattern hazards detected: coalesced global traffic, no bank conflicts, no divergence.' });
+
+  return {
+    movement, timeParts, flops, flopsLabel: fmtN(flops), intensity, balance, bound, coalescing, conflictRate, findings,
+    totalMoved: movement.reduce((a, m) => a + m.bytes, 0), globalBytes, sharedBytes, peakTF, bwGBs
   };
 }

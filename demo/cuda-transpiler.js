@@ -198,6 +198,9 @@
     'truncf':      { js: 'Math.trunc', nargs: 1 },
     'trunc':       { js: 'Math.trunc', nargs: 1 },
     'rsqrtf':      { js: null, nargs: 1, template: '(1.0/Math.sqrt($1))' },
+    '__popc':      { js: null, nargs: 1, template: '__rt.constructor.__popc($1)' },
+    '__popcll':    { js: null, nargs: 1, template: '__rt.constructor.__popc($1)' },
+    '__clz':       { js: null, nargs: 1, template: '__rt.constructor.__clz($1)' },
     'rsqrt':       { js: null, nargs: 1, template: '(1.0/Math.sqrt($1))' },
     '__rsqrtf':    { js: null, nargs: 1, template: '(1.0/Math.sqrt($1))' },
     'fmaf':        { js: null, nargs: 3, template: '($1*$2+$3)' },
@@ -518,8 +521,20 @@
    * Transform a kernel's body from CUDA C++ to JavaScript.
    * Handles threadIdx, blockIdx, shared memory, atomics, pointer access, etc.
    */
+  let currentStructs = new Set();
+  function transformStructLocals(code) {
+    currentStructs.forEach(function(sName) {
+      code = code.replace(new RegExp('(?:\\bstruct\\s+)?\\b' + sName + '\\s+(\\w+)\\s*;', 'g'), 'let $1 = new ' + sName + '();');
+      code = code.replace(new RegExp('(?:\\bstruct\\s+)?\\b' + sName + '\\s+(\\w+)\\s*=\\s*\\{([^}]*)\\}\\s*;', 'g'), function(m, v, init) {
+        return 'let ' + v + ' = new ' + sName + '(); Object.assign(' + v + ', (function(a){ const o = {}; const k = Object.keys(new ' + sName + '()); a.forEach(function(x, i){ o[k[i]] = x; }); return o; })([' + init + ']));';
+      });
+      code = code.replace(new RegExp('(?:\\bstruct\\s+)?\\b' + sName + '\\s+(\\w+)\\s*=', 'g'), 'let $1 =');
+    });
+    return code;
+  }
+
   function transformKernelBody(body, params, allKernelAndDeviceNames) {
-    let code = body;
+    let code = transformStructLocals(body);
 
     // Rename reserved keyword parameters in kernel body (e.g. in -> _in)
     if (params) {
@@ -648,6 +663,8 @@
     // --- Constants ---
     code = transformConstants(code);
 
+    // --- Integer literal suffixes (u, l, ul, ull) ---
+    code = code.replace(/\b(0[xX][0-9a-fA-F]+|\d+)(?:[uU][lL]{0,2}|[lL]{1,2}[uU]?)\b/g, '$1');
     // --- Float literal suffixes ---
     code = code.replace(/(\d+\.?\d*)[fF]\b/g, '$1');
     code = code.replace(/(\d*\.\d+)[fF]\b/g, '$1');
@@ -712,7 +729,13 @@
 
           // Parse first arg: &arr[idx] or ptr + idx or &var
           let ptrName, indexExpr;
-          const addrOfArray = firstArg.match(/^&\s*(\w+)\s*\[([^\]]+)\]$/);
+          let addrOfArray = null;
+          const _aoa = firstArg.match(/^&\s*(\w+)\s*\[/);
+          if (_aoa) {
+            const _open = _aoa[0].length - 1;
+            const _close = findMatchingDelimiter(firstArg, _open, '[', ']');
+            if (_close === firstArg.length - 1) addrOfArray = [firstArg, _aoa[1], firstArg.substring(_open + 1, _close)];
+          }
           const addrOfPtrOffset = firstArg.match(/^&?\s*\(?\s*(\w+)\s*\+\s*(.+?)\s*\)?\s*$/);
           const addrOfScalar = firstArg.match(/^&\s*(\w+)$/);
 
@@ -952,7 +975,24 @@
   /**
    * Transform C/C++ type declarations to JS let/const.
    */
+  /**
+   * Split comma-separated declarations that contain arrays or pointers into separate statements:
+   *   float a[4], *b[8], c = 1;  ->  float a[4]; float *b[8]; float c = 1;
+   * (the per-declarator rewrites below only understand one declarator per statement)
+   */
+  function splitMultiDeclarators(code) {
+    const TYPE = '(?:const\\s+)?(?:unsigned\\s+)?(?:float|double|int|short|char|long(?:\\s+long)?|size_t|bool|uint\\d+_t|int\\d+_t|cudaStream_t|cudaEvent_t|ncclComm_t|half|__half)';
+    const DECL = '\\*{0,2}\\s*[A-Za-z_]\\w*(?:\\s*\\[[^\\]]*\\])*(?:\\s*=\\s*[^,;{}()]+)?';
+    const re = new RegExp('(^|[;{}\\n])(\\s*)(' + TYPE + ')\\s+(' + DECL + '(?:\\s*,\\s*' + DECL + ')+)\\s*;', 'g');
+    return code.replace(re, function(m, pre, ws, type, list) {
+      if (list.indexOf('[') === -1 && list.indexOf('*') === -1) return m;
+      const parts = list.split(',').map(function(p) { return p.trim(); });
+      return pre + ws + parts.map(function(p) { return type + ' ' + p + ';'; }).join(' ');
+    });
+  }
+
   function transformTypeDeclarations(code) {
+    code = splitMultiDeclarators(code);
     // Pointer array declarations: type* name[size]; or type *name[size];
     const ptrArrayPattern = /(?:const\s+)?(?:float|double|int|unsigned\s+int|short|char|long|size_t|void|cudaStream_t|ncclComm_t|cudaEvent_t|\w+)\s*\*+\s*(\w+)\s*\[([^\]]+)\]\s*;/g;
     code = code.replace(ptrArrayPattern, function(m, name, size) {
@@ -1218,13 +1258,48 @@
   // Type cast transformations
   // ---------------------------------------------------------------------------
 
+  /** Find the end of a unary/postfix operand starting at pos (identifier chain, calls, indexes, parens, literals). */
+  function operandEnd(code, pos) {
+    let i = pos;
+    while (i < code.length && (code[i] === '-' || code[i] === '+' || code[i] === '!' || code[i] === '~')) i++;
+    if (code[i] === '(') {
+      const e = findMatchingDelimiter(code, i, '(', ')');
+      i = e === -1 ? code.length : e + 1;
+    } else {
+      const m = /^(?:0[xX][0-9a-fA-F]+|\d+\.?\d*(?:[eE][+-]?\d+)?|[A-Za-z_$][\w$]*)/.exec(code.slice(i));
+      if (!m) return pos;
+      i += m[0].length;
+    }
+    for (;;) {
+      if (code[i] === '[') { const e = findMatchingDelimiter(code, i, '[', ']'); if (e === -1) break; i = e + 1; }
+      else if (code[i] === '(') { const e = findMatchingDelimiter(code, i, '(', ')'); if (e === -1) break; i = e + 1; }
+      else if (code[i] === '.' && /[A-Za-z_$]/.test(code[i + 1] || '')) { i++; while (/[\w$]/.test(code[i] || '')) i++; }
+      else break;
+    }
+    return i;
+  }
+
+  function castOperand(code, re, suffix) {
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(code)) !== null) {
+      const start = m.index + m[0].length;
+      const end = operandEnd(code, start);
+      if (end <= start) { re.lastIndex = start; continue; }
+      const repl = '((' + code.substring(start, end) + ')' + suffix + ')';
+      code = code.substring(0, m.index) + repl + code.substring(end);
+      re.lastIndex = m.index + repl.length;
+    }
+    return code;
+  }
+
   function transformTypeCasts(code) {
     // (size_t), (uint64_t), (int64_t), (uint32_t), (int32_t), (long), (long long), (short), (char) → strip
     code = code.replace(/\(\s*(?:size_t|uint64_t|int64_t|uint32_t|int32_t|short|long|long\s+long)\s*\)\s*/g, '');
 
-    // (int)expr → (expr|0)  — integer truncation
-    code = code.replace(/\(\s*int\s*\)\s*(\w+)/g, '(($1)|0)');
-    code = code.replace(/\(\s*unsigned\s+int\s*\)\s*(\w+)/g, '(($1)>>>0)');
+    // (int)expr → ((expr)|0), (unsigned)expr → ((expr)>>>0) — operand may be a call, index chain or parenthesised expr
+    code = castOperand(code, /\(\s*int\s*\)\s*/g, '|0');
+    code = castOperand(code, /\(\s*unsigned(?:\s+int)?\s*\)\s*/g, '>>>0');
 
     // (float)expr, (double)expr → just (expr)
     code = code.replace(/\(\s*(?:float|double)\s*\)\s*/g, '');
@@ -1325,9 +1400,11 @@
     code = code.replace(/cudaFreeHost\s*\([^)]*\)/g, '/* host freed */');
 
     // --- cudaEvent timing APIs ---
-    code = code.replace(/cudaEventElapsedTime\s*\(\s*&?\s*([\w.\[\]]+)[^)]*\)/g, '$1 = (__rt.getCounters().estimatedTimeMs || 0.12)');
-    code = code.replace(/cudaEventCreate\s*\([^)]*\)/g, '/* event created */');
-    code = code.replace(/cudaEventRecord\s*\([^)]*\)/g, '/* event recorded */');
+    // Events capture the simulator's modeled device clock at record time; elapsed = difference.
+    code = code.replace(/cudaStreamCreate(?:WithFlags|WithPriority)?\s*\(\s*&?\s*(\w+)[^)]*\)/g, '($1 = 0)');
+    code = code.replace(/cudaEventCreate(?:WithFlags)?\s*\(\s*&?\s*(\w+)[^)]*\)/g, '($1 = { __t: 0 })');
+    code = code.replace(/cudaEventRecord\s*\(\s*(\w+)\s*(?:,[^)]*)?\)/g, '($1.__t = __rt.getCounters().estimatedTimeMs)');
+    code = code.replace(/cudaEventElapsedTime\s*\(\s*&?\s*([\w.\[\]]+)\s*,\s*(\w+)\s*,\s*(\w+)\s*\)/g, '($1 = Math.max(0, $3.__t - $2.__t))');
     code = code.replace(/cudaEventSynchronize\s*\([^)]*\)/g, '__rt.cudaDeviceSynchronize()');
     code = code.replace(/cudaEventDestroy\s*\([^)]*\)/g, '/* event destroyed */');
 
@@ -1483,6 +1560,20 @@
         return '__rt.ncclAllGather(' + send.trim() + ', ' + recv.trim() + ', ' + sendcount.trim() + ', ' + dtype.trim() + ', ' + comm.trim() + ')';
       });
     code = code.replace(/ncclCommDestroy\s*\([^)]*\)/g, '/* comm destroyed */ 0');
+    code = code.replace(/\bncclGroupStart\s*\(\s*\)/g, '__rt.ncclGroupStart()');
+    code = code.replace(/\bncclGroupEnd\s*\(\s*\)/g, '__rt.ncclGroupEnd()');
+    code = code.replace(/\bncclSend\s*\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,)]+)(?:,[^)]*)?\)/g,
+      function(m, buf, count, dtype, peer, comm) {
+        return '__rt.ncclSend(' + [buf, count, dtype, peer, comm].map(function(x) { return x.trim(); }).join(', ') + ')';
+      });
+    code = code.replace(/\bncclRecv\s*\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,)]+)(?:,[^)]*)?\)/g,
+      function(m, buf, count, dtype, peer, comm) {
+        return '__rt.ncclRecv(' + [buf, count, dtype, peer, comm].map(function(x) { return x.trim(); }).join(', ') + ')';
+      });
+    code = code.replace(/\bncclReduce\s*\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,)]+)(?:,[^)]*)?\)/g,
+      function(m, send, recv, count, dtype, op, root, comm) {
+        return '__rt.ncclReduce(' + [send, recv, count, dtype, op, root, comm].map(function(x) { return x.trim(); }).join(', ') + ')';
+      });
 
     // --- cudaMemcpyAsync — treat as sync ---
     code = code.replace(/cudaMemcpyAsync\s*\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*cudaMemcpyHostToDevice[^)]*\)/g,
@@ -1561,6 +1652,8 @@
     // --- Constants ---
     code = transformConstants(code);
 
+    // --- Integer literal suffixes (u, l, ul, ull) ---
+    code = code.replace(/\b(0[xX][0-9a-fA-F]+|\d+)(?:[uU][lL]{0,2}|[lL]{1,2}[uU]?)\b/g, '$1');
     // --- Float literal suffixes ---
     code = code.replace(/(\d+\.?\d*)[fF]\b/g, '$1');
     code = code.replace(/(\d*\.\d+)[fF]\b/g, '$1');
@@ -1571,6 +1664,8 @@
     // --- Strip remaining C++ qualifiers ---
     code = code.replace(/\bextern\s+"C"\s*\{/g, '{');
     code = code.replace(/\bextern\s+"C"/g, '');
+    code = code.replace(/\b__constant__\b\s*/g, '');
+    code = code.replace(/\b__device__\b\s*/g, '');
     code = code.replace(/\bstatic\b\s*/g, '');
     code = code.replace(/\binline\b\s*/g, '');
     code = code.replace(/\bvolatile\b\s*/g, '');
@@ -1864,7 +1959,7 @@
    * We emit them as regular JS functions prefixed with __device_.
    */
   function transformDeviceFunction(func, allDeviceNames) {
-    let body = func.body;
+    let body = transformStructLocals(func.body);
 
     // Apply kernel-like transforms to the body
     const ptrParams = new Set();
@@ -1896,6 +1991,205 @@
   }
 
   // ---------------------------------------------------------------------------
+  // AST instrumentation: FLOP counting, branch-divergence tracking, validation
+  // ---------------------------------------------------------------------------
+
+  function getAcorn() {
+    if (typeof acorn !== 'undefined' && acorn && acorn.parse) return acorn;
+    try { if (typeof require === 'function') return require('./acorn.js'); } catch (e) { /* not available */ }
+    return null;
+  }
+
+  const FLOP_MATH = new Set(['sqrt', 'cbrt', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p', 'sin', 'cos', 'tan',
+    'asin', 'acos', 'atan', 'atan2', 'sinh', 'cosh', 'tanh', 'pow', 'hypot']);
+
+  /** Names (kernel params + locals + shared arrays) declared with a floating-point type. */
+  function collectFloatNames(params, bodySrc) {
+    const names = new Set();
+    const FT = '(?:float|double|half|__half|__nv_bfloat16)';
+    (params || []).forEach(function(p) {
+      if (new RegExp('\\b' + FT + '\\b').test(p.type || '')) { names.add(p.name); names.add(p.originalName); }
+    });
+    const re = new RegExp('\\b' + FT + '\\b([^;(){}]*)', 'g');
+    let m;
+    while ((m = re.exec(bodySrc || '')) !== null) {
+      m[1].split(',').forEach(function(chunk) {
+        const head = chunk.split('=')[0];
+        const d = head.match(/^\s*\*?\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$/);
+        if (d) { names.add(d[1]); names.add('_' + d[1]); }
+      });
+    }
+    return names;
+  }
+
+  const INT_T = '(?:int|unsigned(?:\\s+int)?|long(?:\\s+long)?|short|char|size_t|bool|uint\\d+_t|int\\d+_t)';
+  function collectIntNames(params, bodySrc) {
+    const names = new Set();
+    (params || []).forEach(function(p) {
+      if (new RegExp('^\\s*' + INT_T + '\\s*$').test(p.type || '')) { names.add(p.name); names.add(p.originalName); }
+    });
+    const re = new RegExp('\\b' + INT_T + '\\b([^;(){}]*)', 'g');
+    let m;
+    while ((m = re.exec(bodySrc || '')) !== null) {
+      m[1].split(',').forEach(function(chunk) {
+        const d = chunk.split('=')[0].match(/^\s*\*?\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$/);
+        if (d) { names.add(d[1]); names.add('_' + d[1]); }
+      });
+    }
+    return names;
+  }
+
+  function collectUnsignedNames(params, bodySrc) {
+    const names = new Set();
+    const UT = '(?:unsigned(?:\\s+int)?|uint32_t|unsigned\\s+long\\s+long|uint64_t)';
+    (params || []).forEach(function(p) {
+      if (new RegExp('^\\s*' + UT + '\\s*$').test(p.type || '')) { names.add(p.name); names.add(p.originalName); }
+    });
+    const re = new RegExp('\\b' + UT + '\\b([^;(){}]*)', 'g');
+    let m;
+    while ((m = re.exec(bodySrc || '')) !== null) {
+      m[1].split(',').forEach(function(chunk) {
+        const d = chunk.split('=')[0].match(/^\s*\*?\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$/);
+        if (d) { names.add(d[1]); names.add('_' + d[1]); }
+      });
+    }
+    return names;
+  }
+
+  const BUILTIN_VECS = new Set(['__tid', '__bid', '__bdim', '__gdim']);
+  function isIntish(n, ints, floats) {
+    switch (n.type) {
+      case 'Literal': return typeof n.value === 'number' && (/^0[xX]/.test(n.raw) || !/[.eE]/.test(n.raw));
+      case 'Identifier': return ints.has(n.name) && !floats.has(n.name);
+      case 'MemberExpression':
+        if (n.object.type === 'Identifier' && BUILTIN_VECS.has(n.object.name)) return true;
+        return n.computed && ints.has(rootIdent(n)) && !floats.has(rootIdent(n));
+      case 'UnaryExpression': return (n.operator === '-' || n.operator === '+' || n.operator === '~') && isIntish(n.argument, ints, floats);
+      case 'BinaryExpression':
+        return ['+', '-', '*', '/', '%', '<<', '>>', '&', '|', '^'].indexOf(n.operator) >= 0 && isIntish(n.left, ints, floats) && isIntish(n.right, ints, floats);
+      case 'CallExpression':
+        if (n.callee.type === 'MemberExpression' && !n.callee.computed && n.callee.property.name === 'get') {
+          const r = rootIdent(n.callee.object);
+          return !!r && ints.has(r) && !floats.has(r);
+        }
+        return false;
+      default: return false;
+    }
+  }
+
+  function walkAst(node, visit, parent) {
+    if (!node || typeof node.type !== 'string') return;
+    visit(node, parent);
+    for (const key in node) {
+      if (key === 'type' || key === 'start' || key === 'end') continue;
+      const v = node[key];
+      if (Array.isArray(v)) v.forEach(function(c) { if (c && typeof c.type === 'string') walkAst(c, visit, node); });
+      else if (v && typeof v.type === 'string') walkAst(v, visit, node);
+    }
+  }
+
+  function rootIdent(n) {
+    while (n && n.type === 'MemberExpression') n = n.object;
+    return n && n.type === 'Identifier' ? n.name : null;
+  }
+
+  function isFloatish(node, floatNames) {
+    let found = false;
+    walkAst(node, function(n, parent) {
+      if (found) return;
+      if (n.type === 'Identifier' && parent && parent.type === 'MemberExpression' && parent.property === n && !parent.computed) return;
+      if (n.type === 'Identifier' && floatNames.has(n.name)) found = true;
+      else if (n.type === 'Literal' && typeof n.value === 'number' && /[.eE]/.test(n.raw) && !/^0[xX]/.test(n.raw)) found = true;
+      else if (n.type === 'MemberExpression' && n.computed && floatNames.has(rootIdent(n))) found = true;
+      else if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression') {
+        const c = n.callee;
+        if (c.object.type === 'Identifier' && c.object.name === 'Math') found = true;
+        else if (!c.computed && c.property.name === 'get' && floatNames.has(rootIdent(c.object))) found = true;
+      }
+    });
+    return found;
+  }
+
+  /**
+   * Instruments one generated JS function: counts floating-point ops via __rt.__f(n)
+   * and records branch outcomes via __rt.__br(id, cond) for divergence analysis.
+   * Returns the original code if it cannot be parsed (validation reports that separately).
+   */
+  function instrumentFunction(code, floatNames, intNames, branchState, opts) {
+    opts = opts || {};
+    const uns = opts.unsigned || new Set();
+    const ac = getAcorn();
+    if (!ac) return code;
+    let ast;
+    try { ast = ac.parse(code, { ecmaVersion: 2022, sourceType: 'script', allowReturnOutsideFunction: true }); } catch (e) { return code; }
+    const edits = [];
+    let seq = 0;
+    function wrapFlop(n) {
+      edits.push({ pos: n.start, text: '(__rt.__f(1),', seq: seq++ });
+      edits.push({ pos: n.end, text: ')', seq: seq++ });
+    }
+    walkAst(ast, function(n) {
+      if (n.type === 'BinaryExpression' && n.operator === '/' && !isFloatish(n, floatNames) && isIntish(n, intNames, floatNames)) {
+        edits.push({ pos: n.start, text: 'Math.trunc(', seq: seq++ });
+        edits.push({ pos: n.end, text: ')', seq: seq++ });
+      }
+      // 32-bit integer semantics: int multiply wraps (imul), unsigned right-shift is logical, unsigned stores wrap mod 2^32
+      if (n.type === 'BinaryExpression' && n.operator === '*' && isIntish(n, intNames, floatNames) && !isFloatish(n, floatNames)) {
+        edits.push({ pos: n.start, text: 'Math.imul(', seq: seq++ });
+        edits.push({ pos: code.indexOf('*', n.left.end), del: 1, text: ',', seq: seq++ });
+        edits.push({ pos: n.end, text: ')', seq: seq++ });
+      } else if (n.type === 'BinaryExpression' && n.operator === '>>' && n.left.type === 'Identifier' && uns.has(n.left.name)) {
+        edits.push({ pos: code.indexOf('>>', n.left.end), del: 2, text: '>>>', seq: seq++ });
+      } else if (n.type === 'VariableDeclarator' && n.init && n.id.type === 'Identifier' && uns.has(n.id.name)) {
+        edits.push({ pos: n.init.start, text: '((', seq: seq++ });
+        edits.push({ pos: n.init.end, text: ')>>>0)', seq: seq++ });
+      } else if (n.type === 'AssignmentExpression' && n.operator === '=' && n.left.type === 'Identifier' && uns.has(n.left.name)) {
+        edits.push({ pos: n.right.start, text: '((', seq: seq++ });
+        edits.push({ pos: n.right.end, text: ')>>>0)', seq: seq++ });
+      } else if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed && n.callee.property.name === 'set' &&
+                 n.arguments.length === 2 && uns.has(rootIdent(n.callee.object))) {
+        edits.push({ pos: n.arguments[1].start, text: '((', seq: seq++ });
+        edits.push({ pos: n.arguments[1].end, text: ')>>>0)', seq: seq++ });
+      }
+      if (opts.intOnly) return;
+      if ((n.type === 'IfStatement' || n.type === 'ConditionalExpression') && !/getArray|get2DArray/.test(code.slice(n.test.start, n.test.end))) {
+        const id = branchState.next++;
+        edits.push({ pos: n.test.start, text: '__rt.__br(' + id + ',', seq: seq++ });
+        edits.push({ pos: n.test.end, text: ')', seq: seq++ });
+      } else if (n.type === 'BinaryExpression' && (n.operator === '+' || n.operator === '-' || n.operator === '*' || n.operator === '/')) {
+        if (isFloatish(n, floatNames)) wrapFlop(n);
+      } else if (n.type === 'AssignmentExpression' && (n.operator === '+=' || n.operator === '-=' || n.operator === '*=' || n.operator === '/=')) {
+        if (isFloatish(n, floatNames)) wrapFlop(n);
+      } else if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed &&
+                 n.callee.object.type === 'Identifier' && n.callee.object.name === 'Math' && FLOP_MATH.has(n.callee.property.name)) {
+        wrapFlop(n);
+      }
+    });
+    edits.sort(function(a, b) { return b.pos - a.pos || (b.del ? 1 : 0) - (a.del ? 1 : 0) || b.seq - a.seq; });
+    let out = code;
+    for (let i = 0; i < edits.length; i++) {
+      const e = edits[i];
+      out = out.slice(0, e.pos) + e.text + out.slice(e.pos + (e.del || 0));
+    }
+    return out;
+  }
+
+  /** Parse the full generated program; returns a human-readable error or null. */
+  function validateGenerated(code) {
+    const ac = getAcorn();
+    if (!ac) return null;
+    try {
+      ac.parse(code, { ecmaVersion: 2022, sourceType: 'script', allowReturnOutsideFunction: true });
+      return null;
+    } catch (e) {
+      const line = e.loc ? e.loc.line : 0;
+      const text = line ? String(code.split('\n')[line - 1] || '').trim().slice(0, 140) : '';
+      return 'Could not translate this program: ' + String(e.message).replace(/\s*\(\d+:\d+\)$/, '') +
+        (line ? ' (near: `' + text + '`)' : '');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Main transpile function
   // ---------------------------------------------------------------------------
 
@@ -1924,6 +2218,9 @@
       // --- Protect strings and comments ---
       const prot = protectStringsAndComments(src);
       src = prot.text;
+
+      // --- Rename identifiers that are valid C++ but reserved words in JavaScript ---
+      src = src.replace(/\b(var|let|function|arguments|eval|with|debugger|yield|await)\b/g, '_$1');
 
       // --- Pass 1: Preprocessor ---
       const prep = preprocessorPass(src, warnings);
@@ -1971,6 +2268,9 @@
         };
       }
 
+      const branchState = { next: 0 };
+      currentStructs = new Set();
+      (function() { const sp = /\bstruct\s+(\w+)\s*\{[^}]*\}\s*;/g; let sm; while ((sm = sp.exec(src)) !== null) currentStructs.add(sm[1]); })();
       // Collect device function names for cross-referencing
       const deviceNames = extracted.deviceFuncs.map(function(f) { return f.name; });
 
@@ -1979,7 +2279,7 @@
       for (let i = 0; i < extracted.deviceFuncs.length; i++) {
         const func = extracted.deviceFuncs[i];
         const code = transformDeviceFunction(func, deviceNames);
-        deviceFuncCode.push('  ' + prot.restore(code));
+        deviceFuncCode.push('  ' + instrumentFunction(prot.restore(code), collectFloatNames(func.params, func.body), collectIntNames(func.params, func.body), branchState, { unsigned: collectUnsignedNames(func.params, func.body) }));
       }
 
       // --- Transform kernels ---
@@ -2000,6 +2300,7 @@
         funcCode += '  function* __kernel_' + kernel.name + '(' + allParams + ') {\n';
         funcCode += '    ' + prot.restore(transformedBody).trim().split('\n').join('\n    ') + '\n';
         funcCode += '  }';
+        funcCode = instrumentFunction(funcCode, collectFloatNames(kernel.params, kernel.body), collectIntNames(kernel.params, kernel.body), branchState, { unsigned: collectUnsignedNames(kernel.params, kernel.body) });
         kernelCode.push(funcCode);
       }
 
@@ -2011,6 +2312,7 @@
 
       // --- Pass 5: Final cleanup ---
       hostCode = finalCleanup(hostCode);
+      hostCode = instrumentFunction(hostCode, collectFloatNames([], hostSrc), collectIntNames([], hostSrc), branchState, { intOnly: true });
 
       // --- Assemble output ---
       let output = '// Transpiled from CUDA source\n';
@@ -2035,6 +2337,13 @@
       // Host code
       output += '\n// Host code\n';
       output += hostCode + '\n';
+      output += '\n__rt.__endOfProgram && __rt.__endOfProgram();\n';
+
+      const syntaxProblem = validateGenerated(output);
+      if (syntaxProblem) {
+        errors.push(syntaxProblem);
+        return { success: false, code: '', errors: errors, kernelNames: kernelNames, warnings: warnings };
+      }
 
       return {
         success: true,

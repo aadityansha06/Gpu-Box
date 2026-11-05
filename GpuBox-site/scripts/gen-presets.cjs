@@ -15,6 +15,14 @@ const entries = [
   ['warp_reduction', 'Warp Reduction', '__shfl_down_sync lockstep warp primitives', 'Warp', 1, 'result = 32.000000', src('warp_reduction')],
   ['atomic_histogram', 'Atomic Histogram', 'atomicAdd and contention telemetry', 'Atomics', 1, 'Bin 0: count = 32', src('atomic_histogram')],
   ['multi_gpu_nccl', 'Multi-GPU AllReduce', 'Ring ncclAllReduce across 4 virtual GPUs', 'Multi-GPU', 4, 'GPU 3 reduced element 0: 4.000000', src('multi_gpu_nccl')],
+  ['reduce_sum', 'Parallel Reduction', 'Shared-memory tree + atomicAdd, the pattern behind every sum and loss', 'ML', 1, 'sum = 2048.000000', src('reduce_sum')],
+  ['softmax', 'Softmax', 'Max-subtract, exp, normalise: the core of attention', 'ML', 1, 'row 3 probabilities sum to 1.000000', src('softmax')],
+  ['layernorm', 'LayerNorm', 'Two-pass mean/variance with rsqrtf, as in every transformer block', 'ML', 1, 'variance = 1.0000', src('layernorm')],
+  ['prefix_scan', 'Prefix Scan', 'Hillis-Steele inclusive scan with ping-pong shared buffers', 'Memory', 1, 'scan[63] = 64.000000', src('prefix_scan')],
+  ['transpose_conflicts', 'Bank Conflicts: Transpose', 'See a 32-way conflict, pad the tile, watch it disappear', 'Memory', 1, 'transpose verified: 0 mismatches', src('transpose_conflicts')],
+  ['ddp_allreduce', 'DDP Gradient AllReduce (8 GPUs)', 'Data-parallel step with ring ncclAllReduce and traffic accounting', 'Multi-GPU', 8, 'GPU 7 averaged gradient[0] = 4.500000', src('ddp_allreduce')],
+  ['bug_race', 'Bug: Shared-Memory Race', 'A missing __syncthreads() caught as a RAW hazard', 'Debugging', 1, null, src('bug_race')],
+  ['bug_nccl_desync', 'Bug: NCCL Deadlock', 'One rank skips a collective; the hang is reported instead of suffered', 'Debugging', 4, null, src('bug_nccl_desync')],
   ['bug_oob', 'Bug: Out-of-Bounds', 'A missing bounds guard is caught with thread and block', 'Debugging', 1, null, src('bug_oob')],
   ['bug_barrier', 'Bug: Divergent Barrier', 'A __syncthreads() deadlock caught before hardware', 'Debugging', 1, null, src('bug_barrier')]
 ];

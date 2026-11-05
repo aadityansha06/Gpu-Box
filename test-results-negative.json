@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-28T11:20:25.213Z",
+  "timestamp": "2026-11-05T14:21:10.400Z",
   "environment": {
     "nodeVersion": "v26.8.1",
     "platform": "win32",
@@ -9,21 +9,21 @@
     "total": 31,
     "passed": 31,
     "failed": 0,
-    "durationMs": 43
+    "durationMs": 62
   },
   "tests": [
     {
       "category": "1. Indexing & Bounds",
       "name": "Off-by-one loop boundary (i <= n OOB write caught)",
       "status": "PASS",
-      "durationMs": 26,
+      "durationMs": 38,
       "error": null
     },
     {
       "category": "1. Indexing & Bounds",
       "name": "Incorrect thread indexing (forgetting blockIdx.x detected via output)",
       "status": "PASS",
-      "durationMs": 4,
+      "durationMs": 6,
       "error": null
     },
     {
@@ -44,7 +44,7 @@
       "category": "2. OOB Memory Access",
       "name": "Shared memory out-of-bounds read (throws RangeError)",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
@@ -58,14 +58,14 @@
       "category": "3. Reduction & Arithmetic",
       "name": "Reduction with incorrect stride leaves elements unsummed",
       "status": "PASS",
-      "durationMs": 4,
+      "durationMs": 6,
       "error": null
     },
     {
       "category": "3. Reduction & Arithmetic",
       "name": "Vector normalization of zero vector yields NaN/div-by-zero",
       "status": "PASS",
-      "durationMs": 2,
+      "durationMs": 3,
       "error": null
     },
     {
@@ -79,7 +79,7 @@
       "category": "5. Collectives & Rank Limits",
       "name": "ncclBroadcast with out-of-range root rejected (root >= nranks)",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
@@ -93,7 +93,7 @@
       "category": "5. Collectives & Rank Limits",
       "name": "ncclAllReduce with mismatched buffer array length rejected",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
@@ -156,7 +156,7 @@
       "category": "6. Memcpy & Unsupported APIs",
       "name": "CUDA Graph API (cudaGraphCreate) rejected at transpilation",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     },
     {
@@ -219,14 +219,14 @@
       "category": "8. Allocation & Configuration Limits",
       "name": "Multi-GPU cross-device pointer access without peer access rejected",
       "status": "PASS",
-      "durationMs": 1,
+      "durationMs": 0,
       "error": null
     },
     {
       "category": "8. Allocation & Configuration Limits",
       "name": "Multi-GPU cross-device pointer access succeeds after cudaDeviceEnablePeerAccess",
       "status": "PASS",
-      "durationMs": 0,
+      "durationMs": 1,
       "error": null
     }
   ]

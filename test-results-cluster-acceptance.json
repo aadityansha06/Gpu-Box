@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-28T11:20:26.358Z",
+  "timestamp": "2026-11-05T14:21:11.602Z",
   "totalTests": 12,
   "passedTests": 12,
   "failedTests": 0,
@@ -8,7 +8,7 @@
       "id": "A1",
       "name": "16-rank AllReduce (SUM, MAX, MIN, AVG, PROD, 7680 bytes/rank ring traffic)",
       "status": "PASS",
-      "durationMs": 67
+      "durationMs": 47
     },
     {
       "id": "A2",
@@ -20,13 +20,13 @@
       "id": "A3",
       "name": "16-rank AllGather (180 bytes/rank) & ReduceScatter (120 bytes/rank)",
       "status": "PASS",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "A4",
       "name": "16-rank Desync & Deadlock Detection (missing rank, count mismatch, order mismatch, reset)",
       "status": "PASS",
-      "durationMs": 0
+      "durationMs": 1
     },
     {
       "id": "A5",
@@ -50,7 +50,7 @@
       "id": "A8",
       "name": "Watchdog runaway loop abort (aborts while(true){} naming kernel, block, thread)",
       "status": "PASS",
-      "durationMs": 603
+      "durationMs": 606
     },
     {
       "id": "A9",
@@ -68,7 +68,7 @@
       "id": "A11",
       "name": "Validation verdicts (PASS, FAIL with mismatch details, UNSUPPORTED, tolerance boundaries)",
       "status": "PASS",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "A12",

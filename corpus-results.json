@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-28T11:20:25.565Z",
+  "timestamp": "2026-11-05T14:21:10.819Z",
   "totalKernels": 21,
   "passed": 21,
   "failed": 0,
@@ -9,7 +9,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 26,
+      "durationMs": 36,
       "notes": "Bit-exact vector addition"
     },
     {
@@ -17,7 +17,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 18,
+      "durationMs": 29,
       "notes": "16x16 tiled matrix multiply"
     },
     {
@@ -25,7 +25,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 5,
+      "durationMs": 11,
       "notes": "Sum 1..64 = 2080"
     },
     {
@@ -33,7 +33,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 6,
+      "durationMs": 11,
       "notes": "16x16 shared transpose"
     },
     {
@@ -41,7 +41,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 3,
+      "durationMs": 5,
       "notes": "Dot product sum = 192"
     },
     {
@@ -65,7 +65,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 2,
+      "durationMs": 4,
       "notes": "1D convolution filter"
     },
     {
@@ -73,7 +73,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 1,
+      "durationMs": 2,
       "notes": "Elementwise ReLU"
     },
     {
@@ -89,7 +89,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 2,
+      "durationMs": 3,
       "notes": "Hillis-Steele prefix scan"
     },
     {
@@ -97,7 +97,7 @@
       "category": "Algorithmic",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 1,
+      "durationMs": 3,
       "notes": "32-thread warp shuffle sum = 32.0"
     },
     {
@@ -105,7 +105,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 7,
+      "durationMs": 8,
       "notes": "llm.c layernorm forward mean=2.0"
     },
     {
@@ -113,7 +113,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 2,
+      "durationMs": 1,
       "notes": "llm.c GELU activation"
     },
     {
@@ -121,7 +121,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 3,
+      "durationMs": 6,
       "notes": "llm.c stable softmax sum=1.0"
     },
     {
@@ -129,7 +129,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 1,
+      "durationMs": 3,
       "notes": "llm.c residual addition 1.5+2.5=4.0"
     },
     {
@@ -137,7 +137,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 3,
+      "durationMs": 2,
       "notes": "llm.c token embedding forward lookup"
     },
     {
@@ -145,7 +145,7 @@
       "category": "LLM Kernel",
       "status": "PASS",
       "verdict": "PASS",
-      "durationMs": 4,
+      "durationMs": 2,
       "notes": "llm.c cross-entropy loss = 0.3567"
     },
     {

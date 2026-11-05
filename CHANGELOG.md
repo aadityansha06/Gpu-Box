@@ -53,3 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 Copyright (c) 2026 Aadityansha Verma. All rights reserved.
+
+## Unreleased: engine hardening
+
+- New `scripts/stress-engine.js` (30 checks) and `scripts/gpu-parity.js` (11 kernels compared with a physical GPU).
+- Fixed: int atomics on shared arrays, `&arr[idx[i]]` atomics, kernel-local pointer aliasing of shared arrays, struct locals, `__constant__` globals and `cudaMemcpyToSymbol`, `u`/`ul` literal suffixes, `(int)(expr)` casts, `__popc`/`__clz`, comma-separated array declarations, JS-reserved identifiers (`var`, `let`, ...), int/unsigned host copies (by value), C-style integer division and 32-bit wraparound.
+- Fixed: cudaStream/cudaEvent APIs (events now report modeled device time), `ncclGroupStart/End`, `ncclSend/Recv/Reduce` mapping, ring AllReduce traffic is now the default (2(N-1)/N), rank-skips-collective deadlock and argument-mismatch detection.
+- Fixed: FLOP counting (was zero for ordinary arithmetic), bank-conflict counting per warp-instruction, branch divergence tracking, per-warp coalescing windows were being flushed per thread at barriers.
+- Replaced the serial-latency time model (100-1000x too slow) with a roofline model; added per-component time breakdown.
+- Syntax of generated code is validated; untranslatable input now fails at compile time.
