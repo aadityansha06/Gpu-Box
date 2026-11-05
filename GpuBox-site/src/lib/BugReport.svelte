@@ -13,7 +13,8 @@
   let website = ''; // honeypot
   let includeCode = true;
   let images = [];
-  let status = 'idle'; // idle | sending | sent | fallback
+  let status = 'idle'; // idle | sending | sent | failed
+  let mailHref = '';
   let problem = '';
   let dropping = false;
 
@@ -68,11 +69,11 @@
       if (r.ok && j.ok) { status = 'sent'; return; }
       throw new Error(j.error || 'failed');
     } catch (e) {
-      // No server endpoint (local dev or not configured): fall back to the visitor's mail app.
-      const lines = [message, '', `GPU: ${profile}, cluster: ${devices}`, errors?.length ? 'Errors: ' + errors.join(' | ') : ''];
-      const href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('[Gpubox bug] ' + message.split('\n')[0].slice(0, 70))}&body=${encodeURIComponent(lines.join('\n').slice(0, 1500))}`;
-      window.location.href = href;
-      status = 'fallback';
+      // Never open the visitor's mail app on its own: keep their text and offer it as an explicit choice.
+      mailHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('[Gpubox bug] ' + message.split('
+')[0].slice(0, 70))}&body=${encodeURIComponent([message, '', 'GPU: ' + profile + ', cluster: ' + devices, errors?.length ? 'Errors: ' + errors.join(' | ') : ''].join('
+').slice(0, 1500))}`;
+      status = 'failed';
     }
   }
 </script>
@@ -90,11 +91,11 @@
           <p>Your report reached me directly. Every bug you send makes the engine better.</p>
           <button class="btn btn--primary btn--sm" on:click={close}>Close</button>
         </div>
-      {:else if status === 'fallback'}
+      {:else if status === 'failed'}
         <div class="done">
-          <h3 id="bug-title">Almost there</h3>
-          <p>Your mail app should have opened with the report. Attach your screenshot there and press send. If nothing opened, write to {CONTACT_EMAIL}.</p>
-          <button class="btn btn--ghost btn--sm" on:click={close}>Close</button>
+          <h3 id="bug-title">Could not send right now</h3>
+          <p>The report service is not reachable. Your text is kept. You can try again, or send it by email instead.</p>
+          <div class="row"><button class="btn btn--ghost btn--sm" on:click={() => (status = 'idle')}>Try again</button><a class="btn btn--primary btn--sm" href={mailHref}>Send by email</a></div>
         </div>
       {:else}
         <h3 id="bug-title">Report a bug</h3>
