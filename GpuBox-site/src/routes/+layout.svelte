@@ -21,7 +21,7 @@
 
       <div class="site-header__actions">
 
-        <a href="/#try" class="btn btn--primary btn--sm">Try it</a>
+        <a href="/playground" class="btn btn--primary btn--sm">Try it</a>
       </div>
     </div>
   </header>

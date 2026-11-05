@@ -104,7 +104,7 @@
         Run CUDA C++ and multi-GPU NCCL code in your browser. See the bytes moved, the FLOPs executed and the hazards found, with nothing leaving your machine.
       </p>
       <div class="actions">
-        <a href="#try" class="btn btn--primary btn--lg">Try it live</a>
+        <a href="/playground" class="btn btn--primary btn--lg">Try it live</a>
         <a href="/docs" class="btn btn--ghost btn--lg">Read the docs</a>
       </div>
     </div>
