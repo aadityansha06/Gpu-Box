@@ -70,9 +70,9 @@
       throw new Error(j.error || 'failed');
     } catch (e) {
       // Never open the visitor's mail app on its own: keep their text and offer it as an explicit choice.
-      mailHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('[Gpubox bug] ' + message.split('
-')[0].slice(0, 70))}&body=${encodeURIComponent([message, '', 'GPU: ' + profile + ', cluster: ' + devices, errors?.length ? 'Errors: ' + errors.join(' | ') : ''].join('
-').slice(0, 1500))}`;
+      const first = message.split("\n")[0].slice(0, 70);
+      const body = [message, "", "GPU: " + profile + ", cluster: " + devices, errors && errors.length ? "Errors: " + errors.join(" | ") : ""].join("\n").slice(0, 1500);
+      mailHref = "mailto:" + CONTACT_EMAIL + "?subject=" + encodeURIComponent("[Gpubox bug] " + first) + "&body=" + encodeURIComponent(body);
       status = 'failed';
     }
   }
