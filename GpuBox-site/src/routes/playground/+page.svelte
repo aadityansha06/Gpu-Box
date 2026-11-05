@@ -3,6 +3,8 @@
   import { runCUDA, formatCounters, formatBytes, getGPUProfile } from '../../lib/engine.js';
   import MetricsPanel from '../../lib/MetricsPanel.svelte';
   import { onMount } from 'svelte';
+  import BugReport from '../../lib/BugReport.svelte';
+  let bugOpen = false;
   import { makeShareUrl, readSharedState } from '../../lib/share.js';
   import MemoryBankGrid from '../../lib/MemoryBankGrid.svelte';
   import CodeEditor from '../../lib/CodeEditor.svelte';
@@ -171,6 +173,8 @@
   }
 </script>
 
+<BugReport bind:open={bugOpen} {code} profile={selectedProfile} devices={selectedDevices} errors={runErrors} output={runOutput} />
+
 <svelte:head>
   <title>GPUBOX Playground &bull; Syntax-Highlighted Multi-GPU CUDA Simulation</title>
 </svelte:head>
@@ -252,6 +256,10 @@
 
       <button class="btn btn--secondary btn--sm" on:click={share} title="Copy a link that reproduces this exact run">
         {shareLabel}
+      </button>
+
+      <button class="btn btn--secondary btn--sm" on:click={() => (bugOpen = true)} title="Send a bug report with a screenshot straight to the founder">
+        Report a bug
       </button>
 
       <button class="btn btn--secondary btn--sm" on:click={handleDownload} title="Download kernel as .cu file">

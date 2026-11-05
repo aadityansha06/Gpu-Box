@@ -8,6 +8,8 @@
   import CodeEditor from '../lib/CodeEditor.svelte';
   import parity from '../lib/parity.json';
   import { makeShareUrl, readSharedState } from '../lib/share.js';
+  import BugReport from '../lib/BugReport.svelte';
+  let bugOpen = false;
 
   let selectedPresetId = PRESETS[0].id;
   let selectedProfile = 'RTX 4050 Laptop';
@@ -108,6 +110,7 @@
 </svelte:head>
 
 <div class="page">
+  <BugReport bind:open={bugOpen} {code} profile={selectedProfile} devices={selectedDevices} errors={runErrors} output={runOutput} />
   <section class="hero">
     <div class="beam" aria-hidden="true"><i class="beam__core"></i><i class="beam__glow"></i><i class="beam__stripes"></i></div>
     <div class="wrap hero__in">
@@ -168,6 +171,7 @@
                 Memory banks
                 {#if rawCounters?.bankConflicts > 0}<i class="dot dot--warn"></i>{/if}
               </button>
+              <button class="tabs__bug" on:click={() => (bugOpen = true)}>Report a bug</button>
               <a class="tabs__link" href="/playground">Full IDE</a>
             </div>
             <div class="ide__pane">
@@ -390,7 +394,8 @@
   .tabs button { background: none; border: 0; color: var(--text-muted); font-size: .83rem; padding: .45rem .75rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; }
   .tabs button:hover { color: #fff; }
   .tabs button.on { color: #fff; background: rgba(255,255,255,.07); }
-  .tabs__link { margin-left: auto; font-size: .8rem; color: var(--text-muted); padding: .4rem .6rem; }
+  .tabs .tabs__bug { margin-left: auto; font-size: .8rem; }
+  .tabs__link { margin-left: .25rem; font-size: .8rem; color: var(--text-muted); padding: .4rem .6rem; }
   .tabs__link:hover { color: var(--gold-light); }
   .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
   .dot--ok { background: var(--success); } .dot--bad { background: var(--danger); } .dot--warn { background: var(--warning); }
