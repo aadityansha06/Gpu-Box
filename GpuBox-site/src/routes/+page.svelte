@@ -93,22 +93,20 @@
 
 <div class="page">
   <section class="hero">
-    <div class="wrap">
-      <p class="eyebrow">CUDA pre-flight</p>
-      <h1>Catch the CUDA bug<br />before it costs a GPU hour.</h1>
+    <div class="beam" aria-hidden="true"><i class="beam__core"></i><i class="beam__glow"></i><i class="beam__stripes"></i></div>
+    <div class="wrap hero__in">
+      <p class="pill"><span class="pill__dot"></span>Verified on a physical RTX 4050</p>
+      <h1 class="dots">
+        <span>Catch the CUDA bug</span>
+        <span class="dots__gold">before it costs a GPU hour.</span>
+      </h1>
       <p class="lead">
-        Run CUDA C++ and multi-GPU NCCL code in your browser. See the data moved, the compute executed and the hazards found, with nothing leaving your machine.
+        Run CUDA C++ and multi-GPU NCCL code in your browser. See the bytes moved, the FLOPs executed and the hazards found, with nothing leaving your machine.
       </p>
       <div class="actions">
-        <a href="#try" class="btn btn--primary">Try it now</a>
-        <a href="/docs" class="btn btn--ghost">Documentation</a>
+        <a href="#try" class="btn btn--primary btn--lg">Try it live</a>
+        <a href="/docs" class="btn btn--ghost btn--lg">Read the docs</a>
       </div>
-      <dl class="facts">
-        <div><dt>{parity.passed} / {parity.kernelsTested}</dt><dd>kernels match a physical RTX 4050</dd></div>
-        <div><dt>205</dt><dd>automated checks passing</dd></div>
-        <div><dt>1 to 16</dt><dd>virtual GPUs with NCCL</dd></div>
-        <div><dt>0</dt><dd>bytes sent to a server</dd></div>
-      </dl>
     </div>
   </section>
 
@@ -173,6 +171,24 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="wrap">
+      <dl class="facts">
+        <div><dt class="dots">{parity.passed}/{parity.kernelsTested}</dt><dd>kernels match a physical RTX 4050</dd></div>
+        <div><dt class="dots">205</dt><dd>automated checks passing</dd></div>
+        <div><dt class="dots">1-16</dt><dd>virtual GPUs with NCCL</dd></div>
+        <div><dt class="dots">0 B</dt><dd>sent to any server</dd></div>
+      </dl>
+    </div>
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        {#each [0, 1] as _}
+          <span>saxpy&lt;&lt;&lt;24, 128&gt;&gt;&gt;</span><span>softmax&lt;&lt;&lt;8, 64&gt;&gt;&gt;</span><span>layernorm&lt;&lt;&lt;6, 32&gt;&gt;&gt;</span><span>matmul&lt;&lt;&lt;(4,3), (16,16)&gt;&gt;&gt;</span><span>ncclAllReduce(8 GPUs)</span><span>__syncthreads()</span><span>__shfl_down_sync</span><span>atomicAdd</span><span>transpose&lt;&lt;&lt;(2,2), (32,32)&gt;&gt;&gt;</span><span>histogram&lt;&lt;&lt;16, 256&gt;&gt;&gt;</span>
+        {/each}
       </div>
     </div>
   </section>
@@ -245,6 +261,7 @@
           <a href={LINKS.buyEducation} class="btn btn--ghost btn--full">Get Education</a>
         </div>
         <div class="plan plan--main">
+          <span class="plan__tag">Popular</span>
           <h3>Commercial</h3>
           <p class="plan__price">${PRICING.commercial.price}<span>/{PRICING.commercial.period}</span></p>
           <p class="plan__for">Teams and platforms validating CUDA.</p>
@@ -267,14 +284,40 @@
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
   .wrap--wide { max-width: 1320px; }
 
-  .hero { padding: 7rem 0 4.5rem; }
-  .eyebrow { font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-primary); margin-bottom: 1.5rem; }
-  h1 { font-family: var(--font-sans); font-size: clamp(2.4rem, 5.2vw, 4.1rem); font-weight: 600; line-height: 1.08; letter-spacing: -0.035em; color: #fff; }
-  .lead { max-width: 56ch; margin-top: 1.75rem; font-size: 1.12rem; line-height: 1.7; color: var(--text-secondary); }
-  .actions { display: flex; gap: .75rem; margin-top: 2.25rem; }
-  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 4.5rem; padding-top: 2rem; border-top: 1px solid var(--line); }
-  .facts dt { font-size: 1.7rem; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
-  .facts dd { margin-top: .25rem; font-size: .84rem; color: var(--text-muted); line-height: 1.45; }
+  .hero { position: relative; padding: 7rem 0 10rem; text-align: center; overflow: hidden; isolation: isolate; }
+  .hero__in { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: .55rem; padding: .4rem .9rem; border: 1px solid var(--line); border-radius: 99px; font-size: .8rem; color: var(--text-secondary); background: rgba(255,255,255,.03); }
+  .pill__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
+  h1.dots { margin-top: 1.75rem; font-family: 'Doto', var(--font-mono); font-weight: 900; font-size: clamp(1.9rem, 4.7vw, 3.9rem); line-height: 1.05; letter-spacing: -0.01em; color: #fff; display: flex; flex-direction: column; }
+  .dots__gold { background: linear-gradient(180deg, #fff3c4, #d4af37 70%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .lead { max-width: 54ch; margin-top: 1.75rem; font-size: 1.1rem; line-height: 1.7; color: var(--text-secondary); }
+  .actions { display: flex; gap: .75rem; margin-top: 2.25rem; flex-wrap: wrap; justify-content: center; }
+  :global(.btn--lg) { min-height: 48px; padding: .75rem 1.6rem; font-size: .95rem; }
+
+  /* light beam */
+  .beam { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .beam__core { position: absolute; left: 50%; top: 30%; width: 3px; height: 70%; transform: translateX(-50%); background: linear-gradient(180deg, transparent, #fff3c4 40%, #fff 75%, transparent); filter: blur(1px); opacity: .8; }
+  .beam__glow { position: absolute; left: 50%; top: 0; width: 820px; height: 100%; transform: translateX(-50%);
+    background: radial-gradient(ellipse 40% 55% at 50% 78%, rgba(212,175,55,.5), transparent 70%), radial-gradient(ellipse 14% 90% at 50% 40%, rgba(245,215,127,.35), transparent 70%); filter: blur(22px); animation: breathe 7s ease-in-out infinite; }
+  .beam__stripes { position: absolute; inset: 0; opacity: .5;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 64px);
+    -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 40%, #000, transparent 75%); mask-image: radial-gradient(ellipse 60% 70% at 50% 40%, #000, transparent 75%); }
+  @keyframes breathe { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
+
+  /* product mockup overlaps the beam */
+  #try { margin-top: -8rem; padding-top: 0; position: relative; z-index: 3; }
+  .ide { box-shadow: 0 0 0 1px rgba(245,215,127,.08), 0 40px 120px -30px rgba(212,175,55,.28), 0 20px 60px rgba(0,0,0,.8); }
+
+  .strip { padding: 4.5rem 0 1rem; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; text-align: center; }
+  .facts dt { font-family: 'Doto', var(--font-mono); font-weight: 900; font-size: 2.4rem; color: #fff; letter-spacing: 0; }
+  .facts dd { margin-top: .3rem; font-size: .84rem; color: var(--text-muted); line-height: 1.45; }
+
+  .marquee { margin-top: 3.5rem; overflow: hidden; border-block: 1px solid var(--line); padding: .9rem 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .marquee__track { display: flex; gap: 2.5rem; width: max-content; animation: slide 38s linear infinite; }
+  .marquee__track span { font-family: var(--font-mono); font-size: .8rem; color: var(--text-muted); white-space: nowrap; }
+  @keyframes slide { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .marquee__track, .beam__glow { animation: none; } }
 
   .block { padding: 5rem 0; }
   h2 { font-size: clamp(1.6rem, 3vw, 2.15rem); font-weight: 600; letter-spacing: -0.03em; color: #fff; }
@@ -327,22 +370,25 @@
   .limits p { font-size: .92rem; line-height: 1.7; color: var(--text-muted); }
 
   .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2.5rem; align-items: stretch; }
-  .plan { display: flex; flex-direction: column; padding: 1.75rem; border: 1px solid var(--line); border-radius: 14px; background: #060606; }
-  .plan--main { border-color: var(--gold-border); background: linear-gradient(180deg, rgba(212,175,55,.06), #060606 55%); }
+  .plan { position: relative; display: flex; flex-direction: column; padding: 1.9rem; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); backdrop-filter: blur(6px); }
+  .plan--main { border-color: rgba(245,215,127,.35); background: radial-gradient(120% 60% at 50% 0%, rgba(212,175,55,.2), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01)); box-shadow: 0 30px 80px -30px rgba(212,175,55,.35); transform: translateY(-10px); }
+  .plan__tag { position: absolute; top: 1.2rem; right: 1.2rem; font-size: .72rem; padding: .22rem .6rem; border-radius: 99px; border: 1px solid rgba(245,215,127,.4); color: var(--gold-light); background: rgba(212,175,55,.1); }
   .plan h3 { font-size: .95rem; font-weight: 500; color: var(--text-secondary); }
   .plan__price { font-size: 2.4rem; font-weight: 600; color: #fff; letter-spacing: -0.03em; margin: .6rem 0 .25rem; }
   .plan__price span { font-size: .9rem; font-weight: 400; color: var(--text-muted); margin-left: .15rem; }
   .plan__for { font-size: .88rem; color: var(--text-muted); }
   .plan ul { list-style: none; margin: 1.5rem 0; display: flex; flex-direction: column; gap: .6rem; flex: 1; }
   .plan li { font-size: .88rem; color: var(--text-secondary); padding-left: 1.1rem; position: relative; }
-  .plan li::before { content: ''; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 50%; background: var(--gold-primary); }
+  .plan li::before { content: ''; position: absolute; left: 0; top: .3em; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(245,215,127,.55); background: radial-gradient(circle, var(--gold-light) 0 28%, transparent 32%); }
+  .plan li { padding-left: 1.6rem; }
 
   @media (max-width: 920px) {
     .ide__body { grid-template-columns: 1fr; }
     .ide__editor { border-right: 0; border-bottom: 1px solid var(--line); }
     .facts, .pillars { grid-template-columns: repeat(2, 1fr); }
+    .plan--main { transform: none; }
+    .hero { padding: 5.5rem 0 8rem; }
     .pillar:nth-child(3) { border-left: 0; padding-left: 0; }
     .limits, .plans { grid-template-columns: 1fr; }
-    .hero { padding-top: 4.5rem; }
   }
 </style>

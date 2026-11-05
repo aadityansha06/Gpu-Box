@@ -524,3 +524,6 @@ table.data-table td.mono {
 .btn--full { width: 100%; justify-content: center; }
 .site-header { background: rgba(0,0,0,.85) !important; border-bottom: 1px solid var(--line) !important; }
 .report-wrap { background: #000; }
+
+:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; } }
