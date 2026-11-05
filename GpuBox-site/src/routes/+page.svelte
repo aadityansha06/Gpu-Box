@@ -122,7 +122,6 @@
       <div class="actions">
         <a href="/playground" class="btn btn--primary btn--lg">Try it live</a>
         <a href="/docs" class="btn btn--ghost btn--lg">Read the docs</a>
-        <a href={'mailto:' + CONTACT_EMAIL} class="btn btn--ghost btn--lg">Email the founder</a>
       </div>
     </div>
   </section>
@@ -321,9 +320,14 @@
       </div>
     </div>
   </section>
+
+  <p class="founder">Questions? <a href={'mailto:' + CONTACT_EMAIL}>Email the founder</a></p>
 </div>
 
 <style>
+  .founder { text-align: center; padding: 1rem 1.5rem 3rem; font-size: .82rem; color: var(--text-muted); }
+  .founder a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+  .founder a:hover { color: var(--gold-light); }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
   .wrap--wide { max-width: 1320px; }
 
