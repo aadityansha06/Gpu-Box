@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { PRESETS } from '../lib/presets.js';
   import { runCUDA } from '../lib/engine.js';
-  import { LINKS, PRICING } from '../lib/config.js';
+  import { LINKS, PRICING, CONTACT_EMAIL } from '../lib/config.js';
   import MemoryBankGrid from '../lib/MemoryBankGrid.svelte';
   import MetricsPanel from '../lib/MetricsPanel.svelte';
   import CodeEditor from '../lib/CodeEditor.svelte';
@@ -79,10 +79,10 @@
   });
 
   const pillars = [
-    { n: 'Data movement', d: 'Bytes at every level: host to device, DRAM reads and writes, shared memory and GPU to GPU links.' },
-    { n: 'Compute', d: 'FP32 operations counted per thread, with arithmetic intensity and a memory- or compute-bound verdict.' },
-    { n: 'Hazards', d: 'Out-of-bounds, shared-memory races, divergent barriers, bank conflicts and uncoalesced loads, with kernel, block and thread.' },
-    { n: 'Clusters', d: '1 to 16 virtual GPUs with ring collectives, per-rank traffic, and a deadlock report when a rank skips a collective.' }
+    { n: 'How much data moved', d: 'Bytes copied to and from the GPU, read and written in memory, and sent between GPUs.' },
+    { n: 'How much work ran', d: 'Floating-point operations counted per thread, and whether memory or compute is holding the kernel back.' },
+    { n: 'What is broken', d: 'Out-of-bounds access, races, bad barriers, bank conflicts and slow memory patterns, pointing to the exact kernel, block and thread.' },
+    { n: 'Multi-GPU, without the GPUs', d: 'Try 2 to 16 virtual GPUs and NCCL collectives, and get a clear report when one rank would hang the job.' }
   ];
 </script>
 
@@ -94,17 +94,18 @@
   <section class="hero">
     <div class="beam" aria-hidden="true"><i class="beam__core"></i><i class="beam__glow"></i><i class="beam__stripes"></i></div>
     <div class="wrap hero__in">
-      <p class="pill"><span class="pill__dot"></span>Verified on a physical RTX 4050</p>
+      <p class="pill"><span class="pill__dot"></span>No GPU needed. Matches a real RTX 4050.</p>
       <h1 class="dots">
-        <span>Catch the CUDA bug</span>
-        <span class="dots__gold">before it costs a GPU hour.</span>
+        <span>Test your CUDA code</span>
+        <span class="dots__gold">without touching a GPU.</span>
       </h1>
       <p class="lead">
-        Run CUDA C++ and multi-GPU NCCL code in your browser. See the bytes moved, the FLOPs executed and the hazards found, with nothing leaving your machine.
+        Write CUDA, run it in your browser, and find the bugs before they reach hardware. No GPU to buy or rent, and no queue for the one you share. You get the bytes moved, the FLOPs, the bank conflicts and the deadlocks, and it all stays on your machine.
       </p>
       <div class="actions">
         <a href="/playground" class="btn btn--primary btn--lg">Try it live</a>
         <a href="/docs" class="btn btn--ghost btn--lg">Read the docs</a>
+        <a href={'mailto:' + CONTACT_EMAIL} class="btn btn--ghost btn--lg">Email the founder</a>
       </div>
     </div>
   </section>
@@ -194,8 +195,32 @@
 
   <section class="block">
     <div class="wrap">
-      <h2>Every run reads like a profiler report</h2>
-      <p class="sub">Not just "it ran". What the GPU would have done, before you touch one.</p>
+      <h2>Built for people who ship CUDA without a GPU farm</h2>
+      <p class="sub">Real GPUs are expensive, and even a good one is a bottleneck when every small change needs a run.</p>
+      <div class="who">
+        <div class="who__item">
+          <span class="who__n">01</span>
+          <h3>You don't have a GPU</h3>
+          <p>Students, self-taught engineers and anyone on a Mac or an ordinary laptop. Learn CUDA and write real kernels without buying hardware or renting cloud time.</p>
+        </div>
+        <div class="who__item">
+          <span class="who__n">02</span>
+          <h3>You do, but you don't want to burn it</h3>
+          <p>Small teams of two or three share one machine or a pay-by-the-hour instance. Check every change here first, and spend real GPU time only on what already works.</p>
+        </div>
+        <div class="who__item">
+          <span class="who__n">03</span>
+          <h3>You work as a team</h3>
+          <p>Run the same kernels in CI before merging, hand a teammate a link that reproduces a bug, and stop arguing over who has the GPU this afternoon.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>Every run tells you what the GPU would have done</h2>
+      <p class="sub">Not just "it ran". A clear report you can act on before you spend a minute of GPU time.</p>
       <div class="pillars">
         {#each pillars as p, i}
           <div class="pillar">
@@ -250,12 +275,12 @@
   <section class="block" id="pricing">
     <div class="wrap">
       <h2>Licensing</h2>
-      <p class="sub">Runs entirely client-side, so there is no server cost to pass on.</p>
+      <p class="sub">Runs in the browser, so there is no server bill behind it. Not sure which fits? <a class="mail" href={'mailto:' + CONTACT_EMAIL}>Email me directly</a> at {CONTACT_EMAIL} and I will reply myself.</p>
       <div class="plans">
         <div class="plan">
           <h3>Education</h3>
           <p class="plan__price">${PRICING.education.price}<span>/{PRICING.education.period}</span></p>
-          <p class="plan__for">Universities, bootcamps and courses.</p>
+          <p class="plan__for">Teachers and students learning CUDA without GPUs for everyone.</p>
           <ul><li>Unlimited learner seats</li><li>Browser playground integration</li><li>Autograding runner</li><li>All GPU profiles</li></ul>
           <a href={LINKS.buyEducation} class="btn btn--ghost btn--full">Get Education</a>
         </div>
@@ -263,14 +288,14 @@
           <span class="plan__tag">Popular</span>
           <h3>Commercial</h3>
           <p class="plan__price">${PRICING.commercial.price}<span>/{PRICING.commercial.period}</span></p>
-          <p class="plan__for">Teams and platforms validating CUDA.</p>
+          <p class="plan__for">Startups and small teams who want to test before they burn GPU time.</p>
           <ul><li>Commercial deployment rights</li><li>JS and WebAssembly bundle</li><li>Offline license key</li><li>1 to 16 GPU clusters</li><li>Race and deadlock detection</li><li>CI integration and updates</li></ul>
           <a href={LINKS.buyCommercial} class="btn btn--primary btn--full">Get Commercial</a>
         </div>
         <div class="plan">
           <h3>Enterprise</h3>
           <p class="plan__price">Custom</p>
-          <p class="plan__for">Air-gapped and custom hardware.</p>
+          <p class="plan__for">Larger orgs with private networks or custom hardware.</p>
           <ul><li>On-premises deployment</li><li>Custom GPU profiles</li><li>Private registry</li><li>SLA and priority support</li></ul>
           <a href={LINKS.contact} class="btn btn--ghost btn--full">Contact us</a>
         </div>
@@ -319,6 +344,12 @@
   @media (prefers-reduced-motion: reduce) { .marquee__track, .beam__glow { animation: none; } }
 
   .block { padding: 5rem 0; }
+  .who { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2.5rem; }
+  .who__item { padding: 1.6rem; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.008)); }
+  .who__n { font-family: var(--font-mono); font-size: .75rem; color: var(--gold-primary); }
+  .who__item h3 { margin: .8rem 0 .5rem; font-size: 1.05rem; font-weight: 600; color: #fff; }
+  .who__item p { font-size: .92rem; line-height: 1.7; color: var(--text-muted); }
+  .mail { color: var(--gold-light); text-decoration: underline; text-underline-offset: 3px; }
   h2 { font-size: clamp(1.6rem, 3vw, 2.15rem); font-weight: 600; letter-spacing: -0.03em; color: #fff; }
   .sub { margin-top: .85rem; max-width: 62ch; color: var(--text-secondary); line-height: 1.7; }
   .sub code { font-family: var(--font-mono); font-size: .85em; color: var(--gold-light); }
@@ -388,6 +419,6 @@
     .plan--main { transform: none; }
     .hero { padding: 5.5rem 0 8rem; }
     .pillar:nth-child(3) { border-left: 0; padding-left: 0; }
-    .limits, .plans { grid-template-columns: 1fr; }
+    .limits, .plans, .who { grid-template-columns: 1fr; }
   }
 </style>

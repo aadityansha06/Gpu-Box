@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/state';
   import GpuBoxLogo from '../lib/GpuBoxLogo.svelte';
-  import { SITE_URL } from '../lib/config.js';
+  import { SITE_URL, CONTACT_EMAIL } from '../lib/config.js';
 
   const META = {
     '/': { d: 'Run CUDA C++ and multi-GPU NCCL code in your browser. See bytes moved, FLOPs, bank conflicts, divergence and deadlocks before you spend GPU time. Verified against a physical RTX 4050.' },
@@ -57,6 +57,7 @@
         <a href="/docs" class="site-nav__link">Docs</a>
         <a href="/benchmarks" class="site-nav__link">Benchmarks</a>
         <a href="/#pricing" class="site-nav__link">Pricing</a>
+        <a href={"mailto:" + CONTACT_EMAIL} class="site-nav__link">Contact</a>
       </nav>
 
       <div class="site-header__actions">
@@ -102,6 +103,7 @@
             <li><a href="/playground">Interactive Playground</a></li>
             <li><a href="/benchmarks">Benchmarks & Verification</a></li>
             <li><a href="/#pricing">Licensing Plans</a></li>
+            <li><a href={'mailto:' + CONTACT_EMAIL}>{CONTACT_EMAIL}</a></li>
           </ul>
         </div>
       </div>
